@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { ModalProvider } from '@/contexts/ModalContext';
 
 export const metadata: Metadata = {
   title: '目标追踪器',
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="zh">
       <body suppressHydrationWarning={true}>
-        {children}
+        <ModalProvider>
+          {children}
+        </ModalProvider>
       </body>
     </html>
   );

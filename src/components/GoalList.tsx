@@ -1,6 +1,13 @@
+'use client';
+
 import React from 'react';
 import type { Goal, GoalType, Event } from '../types/goals';
 import { GoalCalendar } from './index';
+import { motion } from 'framer-motion';
+import { FadeInView, slideUp, staggerChildren } from './ui/animations';
+import { motionConfig } from '@/utils/motion';
+import { formatDate } from '@/utils/date';
+import { useModal } from '@/contexts/ModalContext';
 
 interface Props {
   title: string;
@@ -8,6 +15,7 @@ interface Props {
   type: GoalType;
   onAddEvent: (goalId: string, event: Omit<Event, 'id'>) => void;
   onEditGoal: (goal: Goal) => void;
+  onDeleteEvent: (eventId: string) => void;
 }
 
 export const GoalList: React.FC<Props> = ({ 
@@ -15,33 +23,39 @@ export const GoalList: React.FC<Props> = ({
   goals, 
   type, 
   onAddEvent,
-  onEditGoal 
+  onEditGoal,
+  onDeleteEvent
 }) => {
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">{title}</h2>
-      {goals.map(goal => (
-        <div key={goal.id} className="bg-white rounded-lg shadow-md min-h-[600px]">
+    <motion.div 
+      className="space-y-6 relative"
+      variants={staggerChildren}
+      initial="initial"
+      animate="animate"
+    >
+      <h2 className="text-2xl font-bold text-neutral-900">{title}</h2>
+      {goals.map((goal) => (
+        <FadeInView
+          key={goal.id}
+          variants={slideUp}
+          className="bg-white rounded-xl shadow-md h-[480px] border border-neutral-200 overflow-hidden relative"
+        >
           <div className="grid grid-cols-1 md:grid-cols-10 h-full">
-            {/* 左侧：目标详情 (2/10) */}
-            <div className="md:col-span-2 p-4 border-b md:border-b-0 md:border-r border-gray-200 overflow-y-auto">
+            {/* 左侧：目标详情 */}
+            <div className="md:col-span-2 p-4 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-50 overflow-y-auto max-h-[480px] relative">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-semibold line-clamp-2">{goal.title}</h3>
-                <button
+                <h3 className="text-lg font-semibold line-clamp-2 text-neutral-900">
+                  {goal.title}
+                </h3>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => onEditGoal(goal)}
-                  className="text-blue-500 hover:text-blue-700 flex-shrink-0 ml-2"
+                  className="text-primary hover:text-primary-dark flex-shrink-0 ml-2 transition-colors"
                   aria-label="编辑目标"
                 >
                   编辑
-                </button>
+                </motion.button>
               </div>
               
               <div className="space-y-3">
@@ -125,14 +139,14 @@ export const GoalList: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* 右侧：进展日历 (8/10) */}
-            <div className="md:col-span-8 p-4 h-full overflow-y-auto">
-              <GoalCalendar goal={goal} onAddEvent={onAddEvent} />
+            {/* 右侧：进展日历 */}
+            <div className="md:col-span-8 p-4 h-full bg-white overflow-y-auto relative">
+              <GoalCalendar goal={goal} onAddEvent={onAddEvent} onDeleteEvent={onDeleteEvent} />
             </div>
           </div>
-        </div>
+        </FadeInView>
       ))}
-    </div>
+    </motion.div>
   );
 };
 
