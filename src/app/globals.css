@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+/* 如果需要设置全局样式，使用 :root 而不是 body */
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 255, 255, 255;
+}
+
+/* 使用 [data-*] 属性选择器而不是类名 */
+[data-theme="light"] {
+  /* 你的样式 */
+} 

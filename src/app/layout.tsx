@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: '目标追踪器',
-  description: '帮助你追踪和完成目标的应用',
+  description: '帮助你追踪和实现目标',
 };
 
 export default function RootLayout({
@@ -13,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh">
-      <body>{children}</body>
+      <body suppressHydrationWarning={true}>
+        {children}
+      </body>
     </html>
   );
 } 
