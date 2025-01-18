@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Goal, GoalType, Event } from '../types/goals';
 import { GoalList, AddGoalModal, EventForm } from './index';
 import { getStorageService } from '../services/storage';
+import { motion } from 'framer-motion';
 
 const storage = getStorageService();
 
@@ -118,32 +119,22 @@ const GoalTracker: React.FC = () => {
   const achievementGoals = goals.filter(goal => goal.type === 'achievement');
   const habitGoals = goals.filter(goal => goal.type === 'habit');
 
+  const handleAddGoalClick = (type: GoalType) => {
+    setSelectedGoalType(type);
+    setIsAddModalOpen(true);
+  };
+
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
+    <div className="max-w-7xl mx-auto p-6 space-y-8 mt-1">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">目标追踪器</h1>
-        <div className="space-x-4">
-          <button
-            onClick={() => {
-              setSelectedGoalType('achievement');
-              setIsAddModalOpen(true);
-            }}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            aria-label="添加成就型目标"
-          >
-            添加成就型目标
-          </button>
-          <button
-            onClick={() => {
-              setSelectedGoalType('habit');
-              setIsAddModalOpen(true);
-            }}
-            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-            aria-label="添加习惯型目标"
-          >
-            添加习惯型目标
-          </button>
-        </div>
+        <motion.h1 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-2xl font-bold mx-auto"
+        >
+          The Best Year of My Life
+        </motion.h1>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
@@ -154,6 +145,7 @@ const GoalTracker: React.FC = () => {
           onAddEvent={handleEventModalOpen}
           onEditGoal={handleEditGoal}
           onDeleteEvent={handleDeleteEvent}
+          onAddGoal={handleAddGoalClick}
         />
         <GoalList 
           title="习惯型目标" 
@@ -162,6 +154,7 @@ const GoalTracker: React.FC = () => {
           onAddEvent={handleEventModalOpen}
           onEditGoal={handleEditGoal}
           onDeleteEvent={handleDeleteEvent}
+          onAddGoal={handleAddGoalClick}
         />
       </div>
 

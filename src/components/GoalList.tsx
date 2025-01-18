@@ -8,7 +8,7 @@ import { FadeInView, slideUp, staggerChildren } from './ui/animations';
 import { motionConfig } from '@/utils/motion';
 import { formatDate } from '@/utils/date';
 import { useModal } from '@/contexts/ModalContext';
-import { PencilIcon } from './icons';
+import { PencilIcon, PlusIcon } from './icons';
 
 interface Props {
   title: string;
@@ -17,6 +17,7 @@ interface Props {
   onAddEvent: (goalId: string, event: Omit<Event, 'id'>) => void;
   onEditGoal: (goal: Goal) => void;
   onDeleteEvent: (eventId: string) => void;
+  onAddGoal?: (type: GoalType) => void;
 }
 
 export const GoalList: React.FC<Props> = ({ 
@@ -25,7 +26,8 @@ export const GoalList: React.FC<Props> = ({
   type, 
   onAddEvent,
   onEditGoal,
-  onDeleteEvent
+  onDeleteEvent,
+  onAddGoal
 }) => {
   return (
     <motion.div 
@@ -34,30 +36,47 @@ export const GoalList: React.FC<Props> = ({
       initial="initial"
       animate="animate"
     >
-      <h2 className="text-2xl font-bold text-neutral-900">{title}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-neutral-900">{title}</h2>
+        {onAddGoal && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onAddGoal(type)}
+            className={`p-1 rounded-full ${
+              type === 'achievement' 
+                ? 'text-blue-500 hover:text-blue-600' 
+                : 'text-green-500 hover:text-green-600'
+            }`}
+            aria-label={`添加${type === 'achievement' ? '成就型' : '习惯型'}目标`}
+          >
+            <PlusIcon className="w-6 h-6" />
+          </motion.button>
+        )}
+      </div>
       {goals.map((goal) => (
         <FadeInView
           key={goal.id}
           variants={slideUp}
           className="bg-white rounded-xl shadow-md h-[480px] border border-neutral-200 overflow-hidden relative"
         >
+          {/* 整个目标列表的布局，分为左侧目标详情和右侧进展日历 */}
           <div className="grid grid-cols-1 md:grid-cols-10 h-full">
             {/* 左侧：目标详情 */}
-            <div className="md:col-span-2 p-4 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-50 overflow-y-auto max-h-[480px] relative">
+            <div className="md:col-span-4 p-4 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-50 overflow-y-auto max-h-[480px] relative">
+              {/* 目标类型标签，根据成就型和习惯型显示不同的颜色 */}
               <div className="flex justify-between items-start mb-4">
-
-              <span className={`px-2 py-1 text-xs rounded-full ${
+                <span className={`px-2 py-1 text-xs rounded-full ${
                   goal.type === 'achievement' 
                     ? 'bg-blue-100 text-blue-800' 
                     : 'bg-green-100 text-green-800'
                 }`}>
                   {goal.type === 'achievement' ? '成就' : '习惯'}
                 </span>
-                
+                {/* 目标标题和编辑按钮 */}
                 <h3 className="text-lg font-semibold line-clamp-2 text-neutral-900 ml-2">
                   {goal.title}
                 </h3>
-               
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -68,7 +87,7 @@ export const GoalList: React.FC<Props> = ({
                   <PencilIcon className="w-4 h-4" />
                 </motion.button>
               </div>
-              
+              {/* 目标的详细信息，包括时间信息、领域标签、动机列表、下一步计划、奖励设置、触发器和最后修改时间 */}
               <div className="space-y-3">
                 {/* 时间信息 */}
                 <div className="text-sm text-gray-600">
@@ -76,7 +95,6 @@ export const GoalList: React.FC<Props> = ({
                   <div className="mb-1">截止：{formatDate(goal.deadline)}</div>
                   <div>频率：{goal.frequency}</div>
                 </div>
-
                 {/* 领域标签 */}
                 <div className="flex flex-wrap gap-1">
                   {goal.domains.map(domain => (
@@ -88,7 +106,6 @@ export const GoalList: React.FC<Props> = ({
                     </span>
                   ))}
                 </div>
-
                 {/* 动机列表 */}
                 {goal.motivations.length > 0 && (
                   <div>
@@ -100,7 +117,6 @@ export const GoalList: React.FC<Props> = ({
                     </ul>
                   </div>
                 )}
-
                 {/* 下一步计划 */}
                 {goal.nextSteps.length > 0 && (
                   <div>
@@ -112,7 +128,6 @@ export const GoalList: React.FC<Props> = ({
                     </ul>
                   </div>
                 )}
-
                 {/* 奖励设置 */}
                 {goal.rewards.length > 0 && (
                   <div>
@@ -124,7 +139,6 @@ export const GoalList: React.FC<Props> = ({
                     </ul>
                   </div>
                 )}
-
                 {/* 触发器 */}
                 {goal.triggers.length > 0 && (
                   <div>
@@ -144,16 +158,14 @@ export const GoalList: React.FC<Props> = ({
                     </div>
                   </div>
                 )}
-
                 {/* 最后修改时间 */}
                 <div className="text-xs text-gray-500 pt-2">
                   最后更新：{formatDate(goal.lastModified)}
                 </div>
               </div>
             </div>
-
             {/* 右侧：进展日历 */}
-            <div className="md:col-span-8 p-4 h-full bg-white overflow-y-auto relative">
+            <div className="md:col-span-6 p-4 h-full bg-white overflow-y-auto relative">
               <GoalCalendar goal={goal} onAddEvent={onAddEvent} onDeleteEvent={onDeleteEvent} />
             </div>
           </div>

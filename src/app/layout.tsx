@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { ModalProvider } from '@/contexts/ModalContext';
 
 export const metadata: Metadata = {
-  title: '目标追踪器',
+  title: 'The Best Year of My Life',
   description: '帮助你追踪和实现目标',
 };
 
