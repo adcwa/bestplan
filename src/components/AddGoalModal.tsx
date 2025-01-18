@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
-import type { Goal, GoalType, GoalDomain, Trigger } from '../types/goals';
+import React, { useState, useEffect } from 'react';
+import type { Goal, GoalType, GoalDomain, Trigger, GoalHistory } from '../types/goals';
 
 interface Props {
   type: GoalType;
+  goal?: Goal;
   onClose: () => void;
   onSubmit: (goal: Goal) => void;
 }
 
 const DOMAINS: GoalDomain[] = [
   '精神', '智力', '情感', '职业', '婚姻', 
-  '亲子', '社交', '娱乐', '财务'
+  '亲子', '社交', '娱乐', '财务', '健康'
 ];
 
-export const AddGoalModal: React.FC<Props> = ({ type, onClose, onSubmit }) => {
+export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit }) => {
   const [title, setTitle] = useState('');
   const [startDate, setStartDate] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -28,12 +29,44 @@ export const AddGoalModal: React.FC<Props> = ({ type, onClose, onSubmit }) => {
   const [newTriggerWhen, setNewTriggerWhen] = useState('');
   const [newTriggerThen, setNewTriggerThen] = useState('');
 
+  useEffect(() => {
+    if (goal) {
+      setTitle(goal.title);
+      setStartDate(goal.startDate.toISOString().split('T')[0]);
+      setDeadline(goal.deadline.toISOString().split('T')[0]);
+      setFrequency(goal.frequency);
+      setSelectedDomains(goal.domains);
+      setMotivations(goal.motivations);
+      setNextSteps(goal.nextSteps);
+      setRewards(goal.rewards);
+      setTriggers(goal.triggers);
+    }
+  }, [goal]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !startDate || !deadline || !frequency) return;
 
-    const newGoal: Goal = {
+    const now = new Date();
+    const historyEntry: GoalHistory = {
       id: Date.now().toString(),
+      date: now,
+      type: goal ? 'update' : 'create',
+      changes: []
+    };
+
+    if (goal) {
+      if (goal.title !== title) {
+        historyEntry.changes.push({
+          field: 'title',
+          oldValue: goal.title,
+          newValue: title
+        });
+      }
+    }
+
+    const newGoal: Goal = {
+      id: goal?.id || Date.now().toString(),
       type,
       title,
       startDate: new Date(startDate),
@@ -44,7 +77,9 @@ export const AddGoalModal: React.FC<Props> = ({ type, onClose, onSubmit }) => {
       nextSteps,
       rewards,
       triggers,
-      events: []
+      events: goal?.events || [],
+      history: [...(goal?.history || []), historyEntry],
+      lastModified: now
     };
 
     onSubmit(newGoal);
@@ -55,7 +90,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, onClose, onSubmit }) => {
       <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">
-            添加{type === 'achievement' ? '成就型' : '习惯型'}目标
+            {goal ? '编辑目标' : `添加${type === 'achievement' ? '成就型' : '习惯型'}目标`}
           </h2>
           <button
             onClick={onClose}
@@ -342,9 +377,13 @@ export const AddGoalModal: React.FC<Props> = ({ type, onClose, onSubmit }) => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              className={`px-4 py-2 text-white rounded-md ${
+                goal 
+                  ? 'bg-green-500 hover:bg-green-600' 
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
             >
-              创建目标
+              {goal ? '保存修改' : '创建目标'}
             </button>
           </div>
         </form>

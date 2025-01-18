@@ -1,5 +1,5 @@
 export type GoalType = 'achievement' | 'habit';
-export type GoalDomain = '精神' | '智力' | '情感' | '职业' | '婚姻' | '亲子' | '社交' | '娱乐' | '财务';
+export type GoalDomain = '精神' | '智力' | '情感' | '职业' | '婚姻' | '亲子' | '社交' | '娱乐' | '财务' | '健康';
 
 export interface Trigger {
   id: string;
@@ -11,6 +11,17 @@ export interface Event {
   id: string;
   date: Date;
   description: string;
+}
+
+export interface GoalHistory {
+  id: string;
+  date: Date;
+  type: 'create' | 'update';
+  changes: {
+    field: string;
+    oldValue: any;
+    newValue: any;
+  }[];
 }
 
 export interface Goal {
@@ -26,6 +37,8 @@ export interface Goal {
   rewards: string[];
   triggers: Trigger[];
   events: Event[];
+  history: GoalHistory[];
+  lastModified: Date;
 }
 
 export interface HabitTracking {

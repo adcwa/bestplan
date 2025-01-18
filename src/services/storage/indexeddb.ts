@@ -1,9 +1,9 @@
-import Dexie from 'dexie';
+import Dexie, { Table } from 'dexie';
 import type { Goal } from '../../types/goals';
 import type { StorageService } from './types';
 
 class GoalTrackerDB extends Dexie {
-  goals!: Dexie.Table<Goal, string>;
+  goals!: Table<Goal>;
 
   constructor() {
     super('GoalTrackerDB');
@@ -21,24 +21,49 @@ export class IndexedDBStorage implements StorageService {
   }
 
   async getGoals(): Promise<Goal[]> {
-    return await this.db.goals.toArray();
+    try {
+      return await this.db.goals.toArray();
+    } catch (error) {
+      console.error('Failed to get goals:', error);
+      return [];
+    }
   }
 
   async saveGoal(goal: Goal): Promise<void> {
-    await this.db.goals.add(goal);
+    try {
+      await this.db.goals.add(goal);
+    } catch (error) {
+      console.error('Failed to save goal:', error);
+      throw error;
+    }
   }
 
   async updateGoal(goal: Goal): Promise<void> {
-    await this.db.goals.put(goal);
+    try {
+      await this.db.goals.put(goal);
+    } catch (error) {
+      console.error('Failed to update goal:', error);
+      throw error;
+    }
   }
 
   async deleteGoal(goalId: string): Promise<void> {
-    await this.db.goals.delete(goalId);
+    try {
+      await this.db.goals.delete(goalId);
+    } catch (error) {
+      console.error('Failed to delete goal:', error);
+      throw error;
+    }
   }
 
   async exportData(): Promise<string> {
-    const goals = await this.getGoals();
-    return JSON.stringify(goals, null, 2);
+    try {
+      const goals = await this.getGoals();
+      return JSON.stringify(goals, null, 2);
+    } catch (error) {
+      console.error('Failed to export data:', error);
+      throw error;
+    }
   }
 
   async importData(data: string): Promise<void> {
@@ -49,11 +74,17 @@ export class IndexedDBStorage implements StorageService {
         await this.db.goals.bulkAdd(goals);
       });
     } catch (error) {
+      console.error('Failed to import data:', error);
       throw new Error('Invalid import data format');
     }
   }
 
   async clearAll(): Promise<void> {
-    await this.db.goals.clear();
+    try {
+      await this.db.goals.clear();
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+      throw error;
+    }
   }
 } 

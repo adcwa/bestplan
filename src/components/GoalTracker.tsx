@@ -17,40 +17,71 @@ const GoalTracker: React.FC = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedGoalType, setSelectedGoalType] = useState<GoalType | null>(null);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
   // 初始加载数据
   useEffect(() => {
     const loadGoals = async () => {
-      const savedGoals = await storage.getGoals();
-      setGoals(savedGoals);
+      try {
+        const storage = getStorageService();
+        const savedGoals = await storage.getGoals();
+        setGoals(savedGoals);
+      } catch (error) {
+        console.error('Failed to load goals:', error);
+      }
     };
     loadGoals();
   }, []);
 
+  const handleEditGoal = (goal: Goal) => {
+    setEditingGoal(goal);
+    setSelectedGoalType(goal.type);
+    setIsAddModalOpen(true);
+  };
+
   const handleAddGoal = async (newGoal: Goal) => {
-    await storage.saveGoal(newGoal);
-    setGoals(prev => [...prev, newGoal]);
-    setIsAddModalOpen(false);
-    setSelectedGoalType(null);
+    try {
+      if (editingGoal) {
+        await storage.updateGoal(newGoal);
+      } else {
+        await storage.saveGoal(newGoal);
+      }
+      
+      setGoals(prev => 
+        editingGoal
+          ? prev.map(g => g.id === newGoal.id ? newGoal : g)
+          : [...prev, newGoal]
+      );
+      
+      setIsAddModalOpen(false);
+      setSelectedGoalType(null);
+      setEditingGoal(null);
+    } catch (error) {
+      console.error('Failed to save goal:', error);
+    }
   };
 
   const handleAddEvent = async (goalId: string, event: Omit<Event, 'id'>) => {
-    const updatedGoals = goals.map(goal => {
-      if (goal.id === goalId) {
-        const updatedGoal = {
-          ...goal,
-          events: [...goal.events, {
-            id: generateId(),
-            ...event
-          }]
-        };
-        // 异步更新存储
-        storage.updateGoal(updatedGoal);
-        return updatedGoal;
-      }
-      return goal;
-    });
-    setGoals(updatedGoals);
+    try {
+      const updatedGoals = goals.map(goal => {
+        if (goal.id === goalId) {
+          const updatedGoal = {
+            ...goal,
+            events: [...goal.events, {
+              id: generateId(),
+              ...event
+            }]
+          };
+          // 异步更新存储
+          storage.updateGoal(updatedGoal);
+          return updatedGoal;
+        }
+        return goal;
+      });
+      setGoals(updatedGoals);
+    } catch (error) {
+      console.error('Failed to add event:', error);
+    }
   };
 
   const achievementGoals = goals.filter(goal => goal.type === 'achievement');
@@ -90,21 +121,25 @@ const GoalTracker: React.FC = () => {
           goals={achievementGoals} 
           type="achievement"
           onAddEvent={handleAddEvent}
+          onEditGoal={handleEditGoal}
         />
         <GoalList 
           title="习惯型目标" 
           goals={habitGoals} 
           type="habit"
           onAddEvent={handleAddEvent}
+          onEditGoal={handleEditGoal}
         />
       </div>
 
       {isAddModalOpen && selectedGoalType && (
         <AddGoalModal
           type={selectedGoalType}
+          goal={editingGoal}
           onClose={() => {
             setIsAddModalOpen(false);
             setSelectedGoalType(null);
+            setEditingGoal(null);
           }}
           onSubmit={handleAddGoal}
         />
