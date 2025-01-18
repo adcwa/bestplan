@@ -8,6 +8,7 @@ import { FadeInView, slideUp, staggerChildren } from './ui/animations';
 import { motionConfig } from '@/utils/motion';
 import { formatDate } from '@/utils/date';
 import { useModal } from '@/contexts/ModalContext';
+import { PencilIcon } from './icons';
 
 interface Props {
   title: string;
@@ -44,17 +45,27 @@ export const GoalList: React.FC<Props> = ({
             {/* 左侧：目标详情 */}
             <div className="md:col-span-2 p-4 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-50 overflow-y-auto max-h-[480px] relative">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-semibold line-clamp-2 text-neutral-900">
+
+              <span className={`px-2 py-1 text-xs rounded-full ${
+                  goal.type === 'achievement' 
+                    ? 'bg-blue-100 text-blue-800' 
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {goal.type === 'achievement' ? '成就' : '习惯'}
+                </span>
+                
+                <h3 className="text-lg font-semibold line-clamp-2 text-neutral-900 ml-2">
                   {goal.title}
                 </h3>
+               
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => onEditGoal(goal)}
-                  className="text-primary hover:text-primary-dark flex-shrink-0 ml-2 transition-colors"
+                  className="text-primary hover:text-primary-dark flex-shrink-0 ml-auto transition-colors" 
                   aria-label="编辑目标"
                 >
-                  编辑
+                  <PencilIcon className="w-4 h-4" />
                 </motion.button>
               </div>
               
@@ -124,8 +135,10 @@ export const GoalList: React.FC<Props> = ({
                           key={trigger.id} 
                           className="bg-gray-50 p-1.5 rounded text-xs"
                         >
-                          <div className="line-clamp-1">当：{trigger.when}</div>
-                          <div className="line-clamp-1">则：{trigger.then}</div>
+                          <div className="flex gap-2">
+                            <div className="line-clamp-1 flex-1">当：{trigger.when}</div>
+                            <div className="line-clamp-1 flex-1">则：{trigger.then}</div>
+                          </div>
                         </div>
                       ))}
                     </div>

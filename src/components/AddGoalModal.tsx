@@ -88,7 +88,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
+        {/* <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">
             {goal ? '编辑目标' : `添加${type === 'achievement' ? '成就型' : '习惯型'}目标`}
           </h2>
@@ -99,7 +99,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
           >
             ✕
           </button>
-        </div>
+        </div> */}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 基本信息 */}
@@ -205,14 +205,19 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
               </div>
               <ul className="space-y-2">
                 {motivations.map((motivation, index) => (
-                  <li key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md">
-                    <span>{motivation}</span>
+                  <li key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md group relative">
+                    <span className="flex-1 break-words truncate max-w-[calc(100%-4rem)]">
+                      {motivation}
+                      <div className="absolute left-0 -top-8 bg-gray-900 text-white px-2 py-1 text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-normal max-w-xs z-10">
+                        {motivation}
+                      </div>
+                    </span>
                     <button
                       type="button"
                       onClick={() => {
                         setMotivations(prev => prev.filter((_, i) => i !== index));
                       }}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-red-500 hover:text-red-700 ml-2"
                     >
                       删除
                     </button>
@@ -345,7 +350,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
                 {triggers.map((trigger) => (
                   <li key={trigger.id} className="bg-gray-50 px-3 py-2 rounded-md">
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex gap-2">
                         <p>当：{trigger.when}</p>
                         <p>则：{trigger.then}</p>
                       </div>
