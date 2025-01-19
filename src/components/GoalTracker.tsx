@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 import type { Goal, GoalType, Event } from '../types/goals';
 import { GoalList, AddGoalModal, EventForm } from './index';
 import { getStorageService } from '../services/storage/index';
@@ -10,6 +10,8 @@ import { Review } from '@/types/review';
 import { YearReview } from './YearReview';
 import { ReviewPeriod } from '@/types/review';
 import { Review as ReviewComponent } from './Review';
+import { Dialog, Transition } from '@headlessui/react';
+import { ShareIcon, DocumentDuplicateIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 // 添加 UUID 生成函数
 const generateId = (): string => {
@@ -76,6 +78,127 @@ const EmptyGoalsAlert: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
   );
 };
 
+// 添加分享弹窗组件
+const ShareGoalsModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  goals: Goal[];
+}> = ({ isOpen, onClose, goals }) => {
+  const [copied, setCopied] = useState(false);
+  
+  const generateShareText = () => {
+    let text = "我的目标清单 📋\n\n";
+    
+    // 添加成就型目标
+    const achievementGoals = goals.filter(g => g.type === 'achievement');
+    if (achievementGoals.length > 0) {
+      text += "🎯 成就目标：\n";
+      achievementGoals.forEach(goal => {
+        const progress = Math.round((goal.events.filter(e => e.isCompleted).length / goal.events.length) * 100) || 0;
+        text += `· ${goal.title} (进度: ${progress}%)\n`;
+      });
+      text += "\n";
+    }
+    
+    // 添加习惯型目标
+    const habitGoals = goals.filter(g => g.type === 'habit');
+    if (habitGoals.length > 0) {
+      text += "🔄 习惯目标：\n";
+      habitGoals.forEach(goal => {
+        const days = Math.ceil((new Date().getTime() - new Date(goal.startDate).getTime()) / (1000 * 60 * 60 * 24));
+        text += `· ${goal.title} (已坚持: ${days}天)\n`;
+      });
+    }
+    
+    text += "\n💪 一起努力，实现目标！";
+    return text;
+  };
+
+  const handleCopyText = async () => {
+    const text = generateShareText();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
+  };
+
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+                <div className="flex items-center justify-between mb-4">
+                  <Dialog.Title className="text-lg font-medium text-neutral-900">
+                    分享我的目标
+                  </Dialog.Title>
+                  <button
+                    onClick={onClose}
+                    className="p-1 rounded-full hover:bg-neutral-100"
+                  >
+                    <XMarkIcon className="w-5 h-5 text-neutral-500" />
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <div className="bg-neutral-50 rounded-lg p-4 mb-4">
+                    <pre className="whitespace-pre-wrap text-sm text-neutral-600 font-mono">
+                      {generateShareText()}
+                    </pre>
+                  </div>
+
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button
+                      onClick={handleCopyText}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors"
+                    >
+                      {copied ? (
+                        <>
+                          <CheckIcon className="w-5 h-5" />
+                          已复制
+                        </>
+                      ) : (
+                        <>
+                          <DocumentDuplicateIcon className="w-5 h-5" />
+                          复制文本
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+};
+
 export const GoalTracker: React.FC = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -96,6 +219,7 @@ export const GoalTracker: React.FC = () => {
   const [currentReview, setCurrentReview] = useState<Review | undefined>();
   const [reviewType, setReviewType] = useState<ReviewPeriod | null>(null);
   const [showEmptyGoalsAlert, setShowEmptyGoalsAlert] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const storage = useMemo(() => getStorageService(), []);
 
@@ -504,9 +628,12 @@ export const GoalTracker: React.FC = () => {
           </button>
           <button 
             className={`${reviewButtonClass} hover:border-[#FF6B6B] hover:text-[#FF6B6B]`}
-            onClick={() => {/* 可以添加分享功能 */}}
+            onClick={() => setIsShareModalOpen(true)}
           >
-            分享我的目标
+            <span className="flex items-center gap-2">
+              <ShareIcon className="w-4 h-4" />
+              分享我的目标
+            </span>
           </button>
         </motion.div>
       </div>
@@ -605,6 +732,12 @@ export const GoalTracker: React.FC = () => {
           <EmptyGoalsAlert 
             isOpen={showEmptyGoalsAlert} 
             onClose={() => setShowEmptyGoalsAlert(false)} 
+          />
+
+          <ShareGoalsModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            goals={goals}
           />
         </>
       )}
