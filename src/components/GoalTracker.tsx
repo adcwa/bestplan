@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Goal, GoalType, Event } from '../types/goals';
 import { GoalList, AddGoalModal, EventForm } from './index';
-import { getStorageService } from '../services/storage';
+import { storage } from '../services/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CommandPalette } from './CommandPalette';
 import { AISettings } from '@/types/command';
 import { createPortal } from 'react-dom';
-
-const storage = getStorageService();
+import { Review } from '@/types/review';
+import { YearReview } from './YearReview';
 
 // 添加 UUID 生成函数
 const generateId = (): string => {
@@ -33,6 +33,8 @@ export const GoalTracker: React.FC = () => {
     modelName: 'deepseek-chat'
   });
   const [isMounted, setIsMounted] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [currentReview, setCurrentReview] = useState<Review | undefined>();
 
   // 在客户端挂载后设置 isMounted
   useEffect(() => {
@@ -287,6 +289,31 @@ export const GoalTracker: React.FC = () => {
     }
   }, []);
 
+  // 处理年度回顾
+  const handleYearReview = useCallback(async () => {
+    const currentYear = new Date().getFullYear();
+    try {
+      // 先检查 AI 设置
+      if (!aiSettings.openApiKey || !aiSettings.baseUrl || !aiSettings.modelName) {
+        setIsCommandPaletteOpen(true);  // 打开命令面板
+        return;
+      }
+
+      // 检查是否有目标数据
+      if (goals.length === 0) {
+        // 可以添加一个提示组件来显示这个错误
+        console.error('没有可用的目标数据');
+        return;
+      }
+
+      const existingReview = await storage.getReview(currentYear);
+      setCurrentReview(existingReview || undefined);
+      setIsReviewOpen(true);
+    } catch (error) {
+      console.error('Failed to load review:', error);
+    }
+  }, [goals, aiSettings]);
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 mt-1">
       <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
@@ -329,7 +356,7 @@ export const GoalTracker: React.FC = () => {
         >
           <button 
             className="px-4 py-2 rounded-full border border-neutral-200 hover:border-[#4ECDC4] hover:text-[#4ECDC4] transition-all duration-300"
-            onClick={() => {/* 可以添加查看年度总结等功能 */}}
+            onClick={handleYearReview}
           >
             年度回顾
           </button>
@@ -398,6 +425,14 @@ export const GoalTracker: React.FC = () => {
             onExport={handleExport}
             onImport={handleImport}
             onSearch={handleGoalSearch}
+          />
+
+          <YearReview
+            isOpen={isReviewOpen}
+            onClose={() => setIsReviewOpen(false)}
+            goals={goals}
+            aiSettings={aiSettings}
+            existingReview={currentReview}
           />
         </>
       )}

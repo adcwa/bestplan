@@ -1,5 +1,6 @@
 import { Goal } from '@/types/goals';
 import { AISettings } from '@/types/command';
+import { Review } from '@/types/review';
 
 export interface StorageService {
   getGoals: () => Promise<Goal[]>;
@@ -8,6 +9,8 @@ export interface StorageService {
   saveGoals: (goals: Goal[]) => Promise<void>;
   getSettings: () => Promise<AISettings>;
   saveSettings: (settings: AISettings) => Promise<void>;
+  getReview: (year: number) => Promise<Review | null>;
+  saveReview: (review: Review) => Promise<void>;
 }
 
 class LocalStorageService implements StorageService {
@@ -82,11 +85,30 @@ class LocalStorageService implements StorageService {
       throw error;
     }
   }
+
+  async getReview(year: number): Promise<Review | null> {
+    try {
+      const review = localStorage.getItem(`review-${year}`);
+      return review ? JSON.parse(review) : null;
+    } catch (error) {
+      console.error('Failed to get review:', error);
+      return null;
+    }
+  }
+
+  async saveReview(review: Review): Promise<void> {
+    try {
+      localStorage.setItem(`review-${review.year}`, JSON.stringify(review));
+    } catch (error) {
+      console.error('Failed to save review:', error);
+      throw error;
+    }
+  }
 }
 
 class IndexedDBService implements StorageService {
   private dbName = 'goalTrackerDB';
-  private version = 1;
+  private version = 2;
   private db: IDBDatabase | null = null;
 
   private async getDB(): Promise<IDBDatabase> {
@@ -103,11 +125,20 @@ class IndexedDBService implements StorageService {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        
         if (!db.objectStoreNames.contains('goals')) {
-          db.createObjectStore('goals', { keyPath: 'id' });
+          const goalsStore = db.createObjectStore('goals', { keyPath: 'id' });
+          goalsStore.createIndex('type', 'type', { unique: false });
+          goalsStore.createIndex('domains', 'domains', { unique: false, multiEntry: true });
         }
+        
         if (!db.objectStoreNames.contains('settings')) {
-          db.createObjectStore('settings', { keyPath: 'id' });
+          const settingsStore = db.createObjectStore('settings', { keyPath: 'id' });
+        }
+        
+        if (!db.objectStoreNames.contains('reviews')) {
+          const reviewsStore = db.createObjectStore('reviews', { keyPath: 'year' });
+          reviewsStore.createIndex('year', 'year', { unique: true });
         }
       };
     });
@@ -147,10 +178,8 @@ class IndexedDBService implements StorageService {
       const transaction = db.transaction(['goals'], 'readwrite');
       const store = transaction.objectStore('goals');
       
-      // 清除现有数据
       store.clear();
       
-      // 添加新数据
       goals.forEach(goal => {
         store.add(goal);
       });
@@ -197,13 +226,30 @@ class IndexedDBService implements StorageService {
       request.onsuccess = () => resolve();
     });
   }
+
+  async getReview(year: number): Promise<Review | null> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['reviews'], 'readonly');
+      const store = transaction.objectStore('reviews');
+      const request = store.get(year.toString());
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result || null);
+    });
+  }
+
+  async saveReview(review: Review): Promise<void> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['reviews'], 'readwrite');
+      const store = transaction.objectStore('reviews');
+      const request = store.put(review);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  }
 }
 
-// 导出获取存储服务的函数
-export const getStorageService = (): StorageService => {
-  // 根据环境或配置选择存储服务
-  if (typeof window !== 'undefined' && window.indexedDB) {
-    return new IndexedDBService();
-  }
-  return new LocalStorageService();
-}; 
+export const storage = new IndexedDBService(); 
