@@ -26,20 +26,16 @@ export const GoalTracker: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [aiSettings, setAISettings] = useState<AISettings>(() => {
-    const saved = localStorage.getItem('aiSettings');
-    return saved ? JSON.parse(saved) : {
-      openApiKey: '',
-      baseUrl: 'https://api.deepseek.com/v1/chat/completions',
-      modelName: 'deepseek-chat'
-    };
+  const [aiSettings, setAISettings] = useState<AISettings>({
+    openApiKey: '',
+    baseUrl: 'https://api.deepseek.com/v1/chat/completions',
+    modelName: 'deepseek-chat'
   });
 
   // 初始加载数据
   useEffect(() => {
     const loadGoals = async () => {
       try {
-        const storage = getStorageService();
         const savedGoals = await storage.getGoals();
         setGoals(savedGoals);
       } catch (error) {
@@ -47,6 +43,19 @@ export const GoalTracker: React.FC = () => {
       }
     };
     loadGoals();
+  }, []);
+
+  // 加载设置
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await storage.getSettings();
+        setAISettings(settings);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+    loadSettings();
   }, []);
 
   // 处理全局快捷键
@@ -62,10 +71,14 @@ export const GoalTracker: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // 处理 AI 设置更新
-  const handleUpdateAISettings = (newSettings: AISettings) => {
-    setAISettings(newSettings);
-    localStorage.setItem('aiSettings', JSON.stringify(newSettings));
+  // 处理设置更新
+  const handleUpdateAISettings = async (newSettings: AISettings) => {
+    try {
+      await storage.saveSettings(newSettings);
+      setAISettings(newSettings);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    }
   };
 
   // 处理数据导出

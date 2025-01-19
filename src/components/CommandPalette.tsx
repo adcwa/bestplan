@@ -81,6 +81,28 @@ export const CommandPalette: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState('');
   const [isCopied, setIsCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateAISettings = () => {
+    const missingFields: string[] = [];
+    
+    if (!aiSettings.openApiKey) {
+      missingFields.push('API Key');
+    }
+    if (!aiSettings.baseUrl) {
+      missingFields.push('Base URL');
+    }
+    if (!aiSettings.modelName) {
+      missingFields.push('Model Name');
+    }
+
+    if (missingFields.length > 0) {
+      setError(`请在设置中配置以下参数：${missingFields.join('、')}`);
+      setSelectedCommand('settings'); // 自动切换到设置页面
+      return false;
+    }
+    return true;
+  };
 
   const filteredCommands = query === ''
     ? commands
@@ -132,7 +154,16 @@ export const CommandPalette: React.FC<Props> = ({
   };
 
   const handleAIPrompt = async () => {
-    if (!aiPrompt.trim() || !aiSettings.openApiKey) return;
+    setError(null);
+
+    if (!aiPrompt.trim()) {
+      setError('请输入问题或需求');
+      return;
+    }
+
+    if (!validateAISettings()) {
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -157,11 +188,29 @@ export const CommandPalette: React.FC<Props> = ({
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      if (!data.choices?.[0]?.message?.content) {
+        throw new Error('Invalid response format');
+      }
+
       setAiResponse(data.choices[0].message.content);
     } catch (error) {
       console.error('Failed to get AI response:', error);
-      setAiResponse('抱歉，获取 AI 响应失败，请稍后重试。');
+      if (error instanceof Error) {
+        if (error.message.includes('401')) {
+          setError('API Key 无效，请检查设置');
+        } else if (error.message.includes('429')) {
+          setError('请求过于频繁，请稍后重试');
+        } else {
+          setError(`获取 AI 响应失败: ${error.message}`);
+        }
+      } else {
+        setError('获取 AI 响应失败，请稍后重试');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -315,6 +364,11 @@ export const CommandPalette: React.FC<Props> = ({
                       <div className="p-4 space-y-4">
                         <h3 className="text-lg font-medium text-neutral-900">AI 设置</h3>
                         <div className="space-y-4">
+                          {error && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                              <p className="text-sm text-red-600">{error}</p>
+                            </div>
+                          )}
                           <div>
                             <label className="block text-sm font-medium text-neutral-700">
                               OpenAI API Key
@@ -363,15 +417,27 @@ export const CommandPalette: React.FC<Props> = ({
 
                     {selectedCommand === 'ai-prompt' && (
                       <div className="p-4 space-y-4">
+                        {error && (
+                          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                            <p className="text-sm text-red-600">{error}</p>
+                          </div>
+                        )}
                         <div>
                           <label className="block text-sm font-medium text-neutral-700">
                             输入你的问题或需求
                           </label>
                           <textarea
                             value={aiPrompt}
-                            onChange={(e) => setAiPrompt(e.target.value)}
+                            onChange={(e) => {
+                              setAiPrompt(e.target.value);
+                              setError(null);
+                            }}
                             rows={4}
-                            className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
+                              error 
+                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                                : 'border-neutral-300 focus:border-primary focus:ring-primary'
+                            }`}
                             placeholder="例如：分析我的目标完成情况，或者给出改进建议..."
                           />
                         </div>
