@@ -89,9 +89,9 @@ const GoalCard = ({
   };
 
   return (
-    <FadeInView
-      variants={slideUp}
-      className="group bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-neutral-200/50 overflow-hidden hover:border-primary/20"
+    <div
+      id={`goal-${goal.id}`}
+      className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 space-y-4 transition-all duration-200"
     >
       <div className="grid grid-cols-1 md:grid-cols-10 h-full">
         {/* 左侧：目标详情 */}
@@ -329,7 +329,7 @@ const GoalCard = ({
           />
         </div>
       </div>
-    </FadeInView>
+    </div>
   );
 };
 

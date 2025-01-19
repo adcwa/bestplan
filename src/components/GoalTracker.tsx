@@ -263,6 +263,30 @@ export const GoalTracker: React.FC = () => {
     setIsCommandPaletteOpen(false);
   }, []);
 
+  // 处理目标搜索和滚动
+  const handleGoalSearch = useCallback((goal: Goal) => {
+    const goalElement = document.getElementById(`goal-${goal.id}`);
+    if (goalElement) {
+      // 计算目标元素的位置
+      const rect = goalElement.getBoundingClientRect();
+      const absoluteTop = window.pageYOffset + rect.top;
+      const windowHeight = window.innerHeight;
+      const scrollTo = absoluteTop - (windowHeight / 2) + (rect.height / 2);
+
+      // 平滑滚动到目标位置
+      window.scrollTo({
+        top: scrollTo,
+        behavior: 'smooth'
+      });
+
+      // 添加高亮效果
+      goalElement.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+      setTimeout(() => {
+        goalElement.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+      }, 2000);
+    }
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 mt-1">
       <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
@@ -373,9 +397,7 @@ export const GoalTracker: React.FC = () => {
             onUpdateAISettings={handleUpdateAISettings}
             onExport={handleExport}
             onImport={handleImport}
-            onSearch={(goal) => {
-              // 实现搜索跳转逻辑
-            }}
+            onSearch={handleGoalSearch}
           />
         </>
       )}

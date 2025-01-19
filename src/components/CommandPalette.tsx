@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 import { Dialog, Combobox, Transition } from '@headlessui/react';
 import { Command, CommandType, AISettings } from '@/types/command';
 import { 
@@ -82,6 +82,8 @@ export const CommandPalette: React.FC<Props> = ({
   const [aiResponse, setAiResponse] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<Goal[]>([]);
+  const [mentionedGoal, setMentionedGoal] = useState<Goal | null>(null);
 
   const validateAISettings = () => {
     const missingFields: string[] = [];
@@ -104,19 +106,33 @@ export const CommandPalette: React.FC<Props> = ({
     return true;
   };
 
-  const filteredCommands = query === ''
-    ? commands
-    : commands.filter((command) =>
-        command.title.toLowerCase().includes(query.toLowerCase()) ||
-        command.description.toLowerCase().includes(query.toLowerCase())
-      );
+  const getFilteredItems = useCallback(() => {
+    if (!query) return { commands, goals: [] };
 
-  const handleCommandSelect = async (command: Command | null) => {
-    if (!command) return;
-    
-    setSelectedCommand(command.id);
+    const filteredCommands = commands.filter((command) =>
+      command.title.toLowerCase().includes(query.toLowerCase()) ||
+      command.description.toLowerCase().includes(query.toLowerCase())
+    );
 
-    switch (command.id) {
+    const filteredGoals = goals.filter((goal) =>
+      goal.title.toLowerCase().includes(query.toLowerCase()) ||
+      goal.domains.some(domain => domain.toLowerCase().includes(query.toLowerCase()))
+    );
+
+    return { commands: filteredCommands, goals: filteredGoals };
+  }, [query, goals]);
+
+  const handleCommandSelect = async (commandOrGoal: Command | Goal | null) => {
+    if (!commandOrGoal) return;
+
+    if ('type' in commandOrGoal) {  // 如果是 Goal
+      onSearch(commandOrGoal);
+      onClose();
+      return;
+    }
+
+    setSelectedCommand(commandOrGoal.id);
+    switch (commandOrGoal.id) {
       case 'export':
         onExport();
         onClose();
@@ -167,6 +183,11 @@ export const CommandPalette: React.FC<Props> = ({
 
     setIsLoading(true);
     try {
+      let targetGoals = goals;
+      if (mentionedGoal) {
+        targetGoals = [mentionedGoal];
+      }
+
       const response = await fetch(aiSettings.baseUrl, {
         method: 'POST',
         headers: {
@@ -182,7 +203,7 @@ export const CommandPalette: React.FC<Props> = ({
             },
             {
               role: 'user',
-              content: `基于以下目标数据和用户提示，请给出专业的建议和分析：\n\n目标数据：${JSON.stringify(goals)}\n\n用户提示：${aiPrompt}`
+              content: `基于以下目标数据和用户提示，请给出专业的建议和分析：\n\n目标数据：${JSON.stringify(targetGoals)}\n\n用户提示：${aiPrompt}`
             }
           ]
         })
@@ -224,6 +245,31 @@ export const CommandPalette: React.FC<Props> = ({
     } catch (err) {
       console.error('Failed to copy text:', err);
     }
+  };
+
+  const handleAIPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setAiPrompt(value);
+    setError(null);
+
+    const atIndex = value.lastIndexOf('@');
+    if (atIndex !== -1) {
+      const searchTerm = value.slice(atIndex + 1).toLowerCase();
+      const matchedGoals = goals.filter(goal =>
+        goal.title.toLowerCase().includes(searchTerm)
+      );
+      setSearchResults(matchedGoals);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  const handleMentionSelect = (goal: Goal) => {
+    const atIndex = aiPrompt.lastIndexOf('@');
+    const newPrompt = aiPrompt.slice(0, atIndex) + `@${goal.title} `;
+    setAiPrompt(newPrompt);
+    setSearchResults([]);
+    setMentionedGoal(goal);
   };
 
   // 自定义 Markdown 组件
@@ -307,60 +353,97 @@ export const CommandPalette: React.FC<Props> = ({
                       />
                     </div>
 
-                    {(query === '' || filteredCommands.length > 0) && (
+                    {(query === '' || getFilteredItems().commands.length > 0 || getFilteredItems().goals.length > 0) && (
                       <Combobox.Options static className="max-h-80 scroll-py-2 divide-y divide-neutral-100 overflow-y-auto">
-                        <li className="p-2">
-                          {filteredCommands.map((command) => (
-                            <Combobox.Option
-                              key={command.id}
-                              value={command}
-                              className={({ active }) =>
-                                `flex cursor-default select-none items-center rounded-md px-3 py-2 ${
-                                  active ? 'bg-primary text-white' : 'text-neutral-900'
-                                }`
-                              }
-                            >
-                              {({ active }) => (
-                                <>
-                                  <command.icon
-                                    className={`h-6 w-6 flex-none ${
-                                      active ? 'text-white' : 'text-neutral-400'
-                                    }`}
-                                    aria-hidden="true"
-                                  />
-                                  <div className="ml-3 flex-auto">
-                                    <p className={`text-sm font-medium ${
-                                      active ? 'text-white' : 'text-neutral-900'
-                                    }`}>
-                                      {command.title}
-                                    </p>
-                                    <p className={`text-sm ${
-                                      active ? 'text-primary-50' : 'text-neutral-500'
-                                    }`}>
-                                      {command.description}
-                                    </p>
-                                  </div>
-                                  {command.shortcut && (
-                                    <div className="ml-3 flex-none flex items-center gap-1">
-                                      {command.shortcut.map((key, index) => (
-                                        <kbd
-                                          key={index}
-                                          className={`px-2 py-1 text-xs font-semibold rounded ${
-                                            active
-                                              ? 'bg-primary-700 text-white'
-                                              : 'bg-neutral-100 text-neutral-500'
-                                          }`}
-                                        >
-                                          {key}
-                                        </kbd>
-                                      ))}
+                        {getFilteredItems().commands.length > 0 && (
+                          <li className="p-2">
+                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">命令</h3>
+                            {getFilteredItems().commands.map((command) => (
+                              <Combobox.Option
+                                key={command.id}
+                                value={command}
+                                className={({ active }) =>
+                                  `flex cursor-default select-none items-center rounded-md px-3 py-2 ${
+                                    active ? 'bg-primary text-white' : 'text-neutral-900'
+                                  }`
+                                }
+                              >
+                                {({ active }) => (
+                                  <>
+                                    <command.icon
+                                      className={`h-6 w-6 flex-none ${
+                                        active ? 'text-white' : 'text-neutral-400'
+                                      }`}
+                                      aria-hidden="true"
+                                    />
+                                    <div className="ml-3 flex-auto">
+                                      <p className={`text-sm font-medium ${
+                                        active ? 'text-white' : 'text-neutral-900'
+                                      }`}>
+                                        {command.title}
+                                      </p>
+                                      <p className={`text-sm ${
+                                        active ? 'text-primary-50' : 'text-neutral-500'
+                                      }`}>
+                                        {command.description}
+                                      </p>
                                     </div>
-                                  )}
-                                </>
-                              )}
-                            </Combobox.Option>
-                          ))}
-                        </li>
+                                    {command.shortcut && (
+                                      <div className="ml-3 flex-none flex items-center gap-1">
+                                        {command.shortcut.map((key, index) => (
+                                          <kbd
+                                            key={index}
+                                            className={`px-2 py-1 text-xs font-semibold rounded ${
+                                              active
+                                                ? 'bg-primary-700 text-white'
+                                                : 'bg-neutral-100 text-neutral-500'
+                                            }`}
+                                          >
+                                            {key}
+                                          </kbd>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </Combobox.Option>
+                            ))}
+                          </li>
+                        )}
+
+                        {getFilteredItems().goals.length > 0 && (
+                          <li className="p-2">
+                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">目标</h3>
+                            {getFilteredItems().goals.map((goal) => (
+                              <Combobox.Option
+                                key={goal.id}
+                                value={goal}
+                                className={({ active }) =>
+                                  `flex cursor-default select-none items-center rounded-md px-3 py-2 ${
+                                    active ? 'bg-primary text-white' : 'text-neutral-900'
+                                  }`
+                                }
+                              >
+                                {({ active }) => (
+                                  <>
+                                    <div className="ml-3 flex-auto">
+                                      <p className={`text-sm font-medium ${
+                                        active ? 'text-white' : 'text-neutral-900'
+                                      }`}>
+                                        {goal.title}
+                                      </p>
+                                      <p className={`text-sm ${
+                                        active ? 'text-primary-50' : 'text-neutral-500'
+                                      }`}>
+                                        {goal.domains.join(' · ')}
+                                      </p>
+                                    </div>
+                                  </>
+                                )}
+                              </Combobox.Option>
+                            ))}
+                          </li>
+                        )}
                       </Combobox.Options>
                     )}
 
@@ -426,16 +509,13 @@ export const CommandPalette: React.FC<Props> = ({
                             <p className="text-sm text-red-600">{error}</p>
                           </div>
                         )}
-                        <div>
+                        <div className="relative">
                           <label className="block text-sm font-medium text-neutral-700">
-                            输入你的问题或需求
+                            输入你的问题或需求（使用 @ 提及特定目标）
                           </label>
                           <textarea
                             value={aiPrompt}
-                            onChange={(e) => {
-                              setAiPrompt(e.target.value);
-                              setError(null);
-                            }}
+                            onChange={handleAIPromptChange}
                             rows={4}
                             className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
                               error 
@@ -444,6 +524,22 @@ export const CommandPalette: React.FC<Props> = ({
                             }`}
                             placeholder="例如：分析我的目标完成情况，或者给出改进建议..."
                           />
+                          {searchResults.length > 0 && (
+                            <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
+                              {searchResults.map((goal) => (
+                                <button
+                                  key={goal.id}
+                                  className="w-full text-left px-4 py-2 hover:bg-neutral-100"
+                                  onClick={() => handleMentionSelect(goal)}
+                                >
+                                  <div className="font-medium">{goal.title}</div>
+                                  <div className="text-sm text-neutral-500">
+                                    {goal.domains.join(' · ')}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="flex justify-end">
                           <button
