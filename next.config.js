@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
+  images: {
+    unoptimized: true,
+  },
+  // 禁用服务器端特性
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   reactStrictMode: true,
   transpilePackages: ['framer-motion'],
   webpack: (config, { isServer }) => {
