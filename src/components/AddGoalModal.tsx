@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Goal, GoalType, GoalDomain, Trigger, GoalHistory } from '../types/goals';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { BasicInfo } from './AddGoalModal/BasicInfo';
 import { TimeSettings } from './AddGoalModal/TimeSettings';
-import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Toast } from '@/components/ui/Toast';
 
 interface Props {
@@ -52,6 +52,9 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
     type: 'success',
     message: ''
   });
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const stepsContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (goal) {
@@ -201,6 +204,45 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
     }
   };
 
+  // 检查是否可以滚动
+  const checkScroll = useCallback(() => {
+    if (stepsContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = stepsContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth);
+    }
+  }, []);
+
+  // 监听容器大小变化
+  useEffect(() => {
+    const container = stepsContainerRef.current;
+    if (container) {
+      checkScroll();
+      const resizeObserver = new ResizeObserver(checkScroll);
+      resizeObserver.observe(container);
+      container.addEventListener('scroll', checkScroll);
+      
+      return () => {
+        resizeObserver.disconnect();
+        container.removeEventListener('scroll', checkScroll);
+      };
+    }
+  }, [checkScroll]);
+
+  // 滚动处理函数
+  const handleScroll = (direction: 'left' | 'right') => {
+    if (stepsContainerRef.current) {
+      const scrollAmount = 200; // 每次滚动的距离
+      const newScrollLeft = stepsContainerRef.current.scrollLeft + 
+        (direction === 'left' ? -scrollAmount : scrollAmount);
+      
+      stepsContainerRef.current.scrollTo({
+        left: newScrollLeft,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <>
       <Toast
@@ -251,69 +293,97 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
-                      {steps.map((step, index) => (
+                    <div className="relative border-b border-neutral-200 pb-4">
+                      {/* 左滚动按钮 */}
+                      {canScrollLeft && (
                         <button
-                          key={step.id}
                           type="button"
-                          onClick={() => {
-                            if (step.required) {
-                              const previousRequiredSteps = steps
-                                .slice(0, index)
-                                .filter(s => s.required);
-                              
-                              const canNavigate = previousRequiredSteps.every(s => {
-                                switch (s.id) {
-                                  case 'basic':
-                                    return title.trim() !== '';
-                                  case 'time':
-                                    return startDate && deadline && frequency.trim() !== '';
-                                  default:
-                                    return true;
-                                }
-                              });
-                              
-                              if (!canNavigate) {
-                                showToast('warning', '请先完成前面的必填步骤');
-                                return;
-                              }
-                            }
-                            
-                            setCurrentStep(index);
-                          }}
-                          className={`flex items-center group ${
-                            index === currentStep 
-                              ? 'text-primary' 
-                              : index < currentStep 
-                                ? 'text-neutral-900'
-                                : 'text-neutral-400 hover:text-neutral-600'
-                          }`}
+                          onClick={() => handleScroll('left')}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-white shadow-md hover:bg-neutral-50"
                         >
-                          <div className={`
-                            w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors
-                            ${index === currentStep 
-                              ? 'border-primary bg-primary text-white' 
-                              : index < currentStep 
-                                ? 'border-neutral-900 bg-neutral-900 text-white'
-                                : 'border-neutral-300 bg-white text-neutral-500 group-hover:border-primary/50'
-                          }
-                        `}>
-                            {index + 1}
-                          </div>
-                          <div className="ml-3">
-                            <div className="text-sm font-medium">
-                              {step.title}
-                              {step.required && <span className="text-red-500 ml-1">*</span>}
-                            </div>
-                          </div>
-                          {index < steps.length - 1 && (
-                            <div className={`
-                              w-12 h-0.5 mx-2
-                              ${index < currentStep ? 'bg-neutral-900' : 'bg-neutral-200'}
-                            `} />
-                          )}
+                          <ChevronLeftIcon className="w-5 h-5 text-neutral-500" />
                         </button>
-                      ))}
+                      )}
+
+                      {/* 步骤导航容器 */}
+                      <div 
+                        ref={stepsContainerRef}
+                        className="flex items-center justify-between overflow-x-auto scrollbar-none scroll-smooth px-6 gap-16"
+                      >
+                        {steps.map((step, index) => (
+                          <button
+                            key={step.id}
+                            type="button"
+                            onClick={() => {
+                              if (step.required) {
+                                const previousRequiredSteps = steps
+                                  .slice(0, index)
+                                  .filter(s => s.required);
+                                
+                                const canNavigate = previousRequiredSteps.every(s => {
+                                  switch (s.id) {
+                                    case 'basic':
+                                      return title.trim() !== '';
+                                    case 'time':
+                                      return startDate && deadline && frequency.trim() !== '';
+                                    default:
+                                      return true;
+                                  }
+                                });
+                                
+                                if (!canNavigate) {
+                                  showToast('warning', '请先完成前面的必填步骤');
+                                  return;
+                                }
+                              }
+                              
+                              setCurrentStep(index);
+                            }}
+                            className={`flex flex-col items-center group flex-shrink-0 w-20 relative ${
+                              index === currentStep 
+                                ? 'text-primary' 
+                                : index < currentStep 
+                                  ? 'text-neutral-900'
+                                  : 'text-neutral-400 hover:text-neutral-600'
+                            }`}
+                          >
+                            <div className="relative">
+                              <div className={`
+                                w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors mb-2
+                                ${index === currentStep 
+                                  ? 'border-primary bg-primary text-white' 
+                                  : index < currentStep 
+                                    ? 'border-neutral-900 bg-neutral-900 text-white'
+                                    : 'border-neutral-300 bg-white text-neutral-500 group-hover:border-primary/50'
+                                }
+                              `}>
+                                {index + 1}
+                              </div>
+                              {index < steps.length - 1 && (
+                                <div className={`
+                                  absolute top-[14px] left-[32px] w-[64px] h-[2px]
+                                  ${index < currentStep ? 'bg-neutral-900' : 'bg-neutral-200'}
+                                `} />
+                              )}
+                            </div>
+                            <div className="text-xs font-medium text-center">
+                              {step.title}
+                              {step.required && <span className="text-red-500">*</span>}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* 右滚动按钮 */}
+                      {canScrollRight && (
+                        <button
+                          type="button"
+                          onClick={() => handleScroll('right')}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-white shadow-md hover:bg-neutral-50"
+                        >
+                          <ChevronRightIcon className="w-5 h-5 text-neutral-500" />
+                        </button>
+                      )}
                     </div>
 
                     <div className="min-h-[400px] py-4">
