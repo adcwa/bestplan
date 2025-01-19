@@ -185,11 +185,102 @@ export const GoalList: React.FC<Props> = ({
                             <ChevronDownIcon
                               className={`${
                                 open ? 'transform rotate-180' : ''
-                              } w-5 h-5 text-neutral-500`}
+                              } w-5 h-5 text-neutral-500 transition-transform duration-200`}
                             />
                           </Disclosure.Button>
-                          <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-neutral-600">
-                            {/* 原有的其他信息内容 */}
+                          <Disclosure.Panel className="mt-2 space-y-4 text-sm text-neutral-600">
+                            {/* 动机列表 */}
+                            {goal.motivations.length > 0 && (
+                              <div className="p-4 bg-white rounded-lg border border-neutral-200">
+                                <h4 className="font-medium text-neutral-900 mb-2">动机列表</h4>
+                                <ul className="space-y-2">
+                                  {goal.motivations.map((motivation, index) => (
+                                    <li key={index} className="flex items-start gap-2">
+                                      <span className="text-primary">•</span>
+                                      <span>{motivation}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* 下一步行动 */}
+                            {goal.nextSteps.length > 0 && (
+                              <div className="p-4 bg-white rounded-lg border border-neutral-200">
+                                <h4 className="font-medium text-neutral-900 mb-2">下一步行动</h4>
+                                <ul className="space-y-2">
+                                  {goal.nextSteps.map((step, index) => (
+                                    <li key={index} className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        className="rounded border-neutral-300 text-primary focus:ring-primary"
+                                      />
+                                      <span>{step}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* 触发器设置 */}
+                            {goal.triggers.length > 0 && (
+                              <div className="p-4 bg-white rounded-lg border border-neutral-200">
+                                <h4 className="font-medium text-neutral-900 mb-2">触发器设置</h4>
+                                <div className="space-y-3">
+                                  {goal.triggers.map((trigger, index) => (
+                                    <div 
+                                      key={index} 
+                                      className="grid grid-cols-[auto,1fr] gap-2 items-center text-sm"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-neutral-500">当</span>
+                                        <span className="px-2 py-1 bg-neutral-50 rounded">
+                                          {trigger.when}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-neutral-500">则</span>
+                                        <span className="px-2 py-1 bg-neutral-50 rounded">
+                                          {trigger.then}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 历史记录 */}
+                            {goal.history.length > 0 && (
+                              <div className="p-4 bg-white rounded-lg border border-neutral-200">
+                                <h4 className="font-medium text-neutral-900 mb-2">修改历史</h4>
+                                <div className="space-y-3">
+                                  {goal.history.map((record, index) => (
+                                    <div key={index} className="text-sm">
+                                      <div className="flex items-center gap-2 text-neutral-500">
+                                        <span>{formatDate(record.date)}</span>
+                                        <span>·</span>
+                                        <span>{record.type === 'create' ? '创建' : '更新'}</span>
+                                      </div>
+                                      {record.changes.length > 0 && (
+                                        <ul className="mt-1 ml-4 space-y-1">
+                                          {record.changes.map((change, changeIndex) => (
+                                            <li key={changeIndex} className="text-neutral-600">
+                                              修改了 {change.field}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 最后修改时间 */}
+                            <div className="text-xs text-neutral-500 text-right">
+                              最后更新：{formatDate(goal.lastModified)}
+                            </div>
                           </Disclosure.Panel>
                         </>
                       )}
