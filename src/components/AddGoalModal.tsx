@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import type { Goal, GoalType, GoalDomain, Trigger, GoalHistory } from '../types/goals';
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
+import { BasicInfo } from './AddGoalModal/BasicInfo';
+import { TimeSettings } from './AddGoalModal/TimeSettings';
+import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Toast } from '@/components/ui/Toast';
 
 interface Props {
   type: GoalType;
@@ -11,6 +17,14 @@ interface Props {
 const DOMAINS: GoalDomain[] = [
   '精神', '智力', '情感', '职业', '婚姻', 
   '亲子', '社交', '娱乐', '财务', '健康'
+];
+
+const steps = [
+  { id: 'basic', title: '基本信息', required: true },
+  { id: 'time', title: '时间规划', required: true },
+  { id: 'motivation', title: '动机计划', required: false },
+  { id: 'action', title: '下一步行动', required: false },
+  { id: 'trigger', title: '触发器设置', required: false }
 ];
 
 export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit }) => {
@@ -28,6 +42,16 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [newTriggerWhen, setNewTriggerWhen] = useState('');
   const [newTriggerThen, setNewTriggerThen] = useState('');
+  const [currentStep, setCurrentStep] = useState(0);
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'warning';
+    message: string;
+  }>({
+    show: false,
+    type: 'success',
+    message: ''
+  });
 
   useEffect(() => {
     if (goal) {
@@ -43,9 +67,21 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
     }
   }, [goal]);
 
+  const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
+    setToast({ show: true, type, message });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !startDate || !deadline || !frequency) return;
+    
+    // 检查必填字段
+    if (!title || !startDate || !deadline || !frequency) {
+      alert('请完成所有必填字段');
+      return;
+    }
 
     const now = new Date();
     const historyEntry: GoalHistory = {
@@ -56,13 +92,37 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
     };
 
     if (goal) {
-      if (goal.title !== title) {
-        historyEntry.changes.push({
-          field: 'title',
-          oldValue: goal.title,
-          newValue: title
-        });
-      }
+      // 记录所有变更
+      const fields: Array<{ field: keyof Goal; label: string }> = [
+        { field: 'title', label: '标题' },
+        { field: 'startDate', label: '开始时间' },
+        { field: 'deadline', label: '截止时间' },
+        { field: 'frequency', label: '频率' },
+        { field: 'domains', label: '领域' },
+        { field: 'motivations', label: '动机' },
+        { field: 'nextSteps', label: '下一步' },
+        { field: 'triggers', label: '触发器' }
+      ];
+
+      fields.forEach(({ field, label }) => {
+        const oldValue = goal[field];
+        const newValue = field === 'startDate' || field === 'deadline'
+          ? new Date(field === 'startDate' ? startDate : deadline)
+          : field === 'domains' ? selectedDomains
+          : field === 'motivations' ? motivations
+          : field === 'nextSteps' ? nextSteps
+          : field === 'triggers' ? triggers
+          : field === 'title' ? title
+          : frequency;
+
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+          historyEntry.changes.push({
+            field,
+            oldValue,
+            newValue
+          });
+        }
+      });
     }
 
     const newGoal: Goal = {
@@ -83,316 +143,414 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
     };
 
     onSubmit(newGoal);
+    onClose(); // 确保只在提交成功后关闭弹窗
+  };
+
+  const handleNextStep = () => {
+    // 检查当前步骤是否为必填且是否已完成
+    if (steps[currentStep].required) {
+      switch (steps[currentStep].id) {
+        case 'basic':
+          if (!title.trim()) {
+            showToast('warning', '请填写目标标题');
+            return;
+          }
+          break;
+        case 'time':
+          if (!startDate || !deadline || !frequency.trim()) {
+            showToast('warning', '请完成时间规划');
+            return;
+          }
+          break;
+      }
+    }
+
+    // 检查是否是最后一步
+    const isLastStep = currentStep === steps.length - 1;
+
+    if (!isLastStep) {
+      // 如果不是最后一步，进入下一步
+      setCurrentStep(prev => prev + 1);
+    } else {
+      // 如果是最后一步，提交表单
+      handleSubmit(new Event('submit') as any);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
+
+  // 添加步骤完成状态检查函数
+  const isStepComplete = (stepId: string) => {
+    switch (stepId) {
+      case 'basic':
+        return title.trim() !== '';
+      case 'time':
+        return startDate && deadline && frequency.trim() !== '';
+      case 'motivation':
+        return true; // 非必填步骤，始终返回 true
+      case 'action':
+        return true; // 非必填步骤，始终返回 true
+      case 'trigger':
+        return true; // 非必填步骤，始终返回 true
+      default:
+        return false;
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">
-            {goal ? '编辑目标' : `添加${type === 'achievement' ? '成就型' : '习惯型'}目标`}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-            aria-label="关闭"
+    <>
+      <Toast
+        show={toast.show}
+        type={toast.type}
+        message={toast.message}
+        onClose={() => setToast(prev => ({ ...prev, show: false }))}
+      />
+      <Transition appear show={true} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={onClose}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
           >
-            ✕
-          </button>
-        </div> */}
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+          </Transition.Child>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 基本信息 */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">目标描述</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">开始时间</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">截止时间</label>
-                <input
-                  type="date"
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">频率</label>
-                <input
-                  type="text"
-                  value={frequency}
-                  onChange={(e) => setFrequency(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="每天/每周/每月"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 领域选择 */}
-          <div>
-            <label className="block text-sm font-medium mb-2">领域（可多选）</label>
-            <div className="flex flex-wrap gap-2">
-              {DOMAINS.map(domain => (
-                <button
-                  key={domain}
-                  type="button"
-                  onClick={() => {
-                    setSelectedDomains(prev => 
-                      prev.includes(domain)
-                        ? prev.filter(d => d !== domain)
-                        : [...prev, domain]
-                    );
-                  }}
-                  className={`px-3 py-1 rounded-full transition-colors ${
-                    selectedDomains.includes(domain)
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 hover:bg-gray-200'
-                  }`}
-                >
-                  {domain}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 动态列表（动机、步骤、奖励） */}
-          <div className="space-y-4">
-            {/* 主要动机 */}
-            <div>
-              <label className="block text-sm font-medium mb-2">主要动机</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={newMotivation}
-                  onChange={(e) => setNewMotivation(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded-md"
-                  placeholder="添加动机"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (newMotivation.trim()) {
-                      setMotivations(prev => [...prev, newMotivation.trim()]);
-                      setNewMotivation('');
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  添加
-                </button>
-              </div>
-              <ul className="space-y-2">
-                {motivations.map((motivation, index) => (
-                  <li key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md group relative">
-                    <span className="flex-1 break-words truncate max-w-[calc(100%-4rem)]">
-                      {motivation}
-                      <div className="absolute left-0 -top-8 bg-gray-900 text-white px-2 py-1 text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-normal max-w-xs z-10">
-                        {motivation}
-                      </div>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMotivations(prev => prev.filter((_, i) => i !== index));
-                      }}
-                      className="text-red-500 hover:text-red-700 ml-2"
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+                  <div className="flex justify-between items-center mb-8">
+                    <Dialog.Title
+                      as="h3"
+                      className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
                     >
-                      删除
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* 下一步计划 */}
-            <div>
-              <label className="block text-sm font-medium mb-2">下一步计划</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={newStep}
-                  onChange={(e) => setNewStep(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded-md"
-                  placeholder="添加计划步骤"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (newStep.trim()) {
-                      setNextSteps(prev => [...prev, newStep.trim()]);
-                      setNewStep('');
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  添加
-                </button>
-              </div>
-              <ul className="space-y-2">
-                {nextSteps.map((step, index) => (
-                  <li key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md">
-                    <span>{step}</span>
+                      {goal ? '编辑目标' : `新增${type === 'achievement' ? '成就型' : '习惯型'}目标`}
+                    </Dialog.Title>
                     <button
-                      type="button"
-                      onClick={() => {
-                        setNextSteps(prev => prev.filter((_, i) => i !== index));
-                      }}
-                      className="text-red-500 hover:text-red-700"
+                      onClick={onClose}
+                      className="p-1 rounded-full hover:bg-neutral-100"
                     >
-                      删除
+                      <XMarkIcon className="w-6 h-6 text-neutral-500" />
                     </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                  </div>
 
-            {/* 奖励 */}
-            <div>
-              <label className="block text-sm font-medium mb-2">奖励设置</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={newReward}
-                  onChange={(e) => setNewReward(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded-md"
-                  placeholder="添加奖励"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (newReward.trim()) {
-                      setRewards(prev => [...prev, newReward.trim()]);
-                      setNewReward('');
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  添加
-                </button>
-              </div>
-              <ul className="space-y-2">
-                {rewards.map((reward, index) => (
-                  <li key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md">
-                    <span>{reward}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRewards(prev => prev.filter((_, i) => i !== index));
-                      }}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      删除
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
+                      {steps.map((step, index) => (
+                        <button
+                          key={step.id}
+                          type="button"
+                          onClick={() => {
+                            if (step.required) {
+                              const previousRequiredSteps = steps
+                                .slice(0, index)
+                                .filter(s => s.required);
+                              
+                              const canNavigate = previousRequiredSteps.every(s => {
+                                switch (s.id) {
+                                  case 'basic':
+                                    return title.trim() !== '';
+                                  case 'time':
+                                    return startDate && deadline && frequency.trim() !== '';
+                                  default:
+                                    return true;
+                                }
+                              });
+                              
+                              if (!canNavigate) {
+                                showToast('warning', '请先完成前面的必填步骤');
+                                return;
+                              }
+                            }
+                            
+                            setCurrentStep(index);
+                          }}
+                          className={`flex items-center group ${
+                            index === currentStep 
+                              ? 'text-primary' 
+                              : index < currentStep 
+                                ? 'text-neutral-900'
+                                : 'text-neutral-400 hover:text-neutral-600'
+                          }`}
+                        >
+                          <div className={`
+                            w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors
+                            ${index === currentStep 
+                              ? 'border-primary bg-primary text-white' 
+                              : index < currentStep 
+                                ? 'border-neutral-900 bg-neutral-900 text-white'
+                                : 'border-neutral-300 bg-white text-neutral-500 group-hover:border-primary/50'
+                          }
+                        `}>
+                            {index + 1}
+                          </div>
+                          <div className="ml-3">
+                            <div className="text-sm font-medium">
+                              {step.title}
+                              {step.required && <span className="text-red-500 ml-1">*</span>}
+                            </div>
+                          </div>
+                          {index < steps.length - 1 && (
+                            <div className={`
+                              w-12 h-0.5 mx-2
+                              ${index < currentStep ? 'bg-neutral-900' : 'bg-neutral-200'}
+                            `} />
+                          )}
+                        </button>
+                      ))}
+                    </div>
 
-            {/* 触发器 */}
-            <div>
-              <label className="block text-sm font-medium mb-2">触发器</label>
-              <div className="space-y-2 mb-2">
-                <input
-                  type="text"
-                  value={newTriggerWhen}
-                  onChange={(e) => setNewTriggerWhen(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="当..."
-                />
-                <input
-                  type="text"
-                  value={newTriggerThen}
-                  onChange={(e) => setNewTriggerThen(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="则..."
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (newTriggerWhen.trim() && newTriggerThen.trim()) {
-                      setTriggers(prev => [...prev, {
-                        id: Date.now().toString(),
-                        when: newTriggerWhen.trim(),
-                        then: newTriggerThen.trim()
-                      }]);
-                      setNewTriggerWhen('');
-                      setNewTriggerThen('');
-                    }
-                  }}
-                  className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  添加触发器
-                </button>
-              </div>
-              <ul className="space-y-2">
-                {triggers.map((trigger) => (
-                  <li key={trigger.id} className="bg-gray-50 px-3 py-2 rounded-md">
-                    <div className="flex justify-between items-start">
-                      <div className="flex gap-2">
-                        <p>当：{trigger.when}</p>
-                        <p>则：{trigger.then}</p>
-                      </div>
+                    <div className="min-h-[400px] py-4">
+                      {currentStep === 0 && (
+                        <BasicInfo
+                          title={title}
+                          setTitle={setTitle}
+                          selectedDomains={selectedDomains}
+                          setSelectedDomains={setSelectedDomains}
+                          DOMAINS={DOMAINS}
+                        />
+                      )}
+                      
+                      {currentStep === 1 && (
+                        <TimeSettings
+                          startDate={startDate}
+                          setStartDate={setStartDate}
+                          deadline={deadline}
+                          setDeadline={setDeadline}
+                          frequency={frequency}
+                          setFrequency={setFrequency}
+                        />
+                      )}
+                      
+                      {currentStep === 2 && (
+                        <div className="space-y-6">
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                              动机列表
+                            </label>
+                            <div className="space-y-2">
+                              {motivations.map((motivation, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                  <span className="flex-grow p-2 bg-neutral-50 rounded-lg">
+                                    {motivation}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setMotivations(prev => prev.filter((_, i) => i !== index))}
+                                    className="text-red-500 hover:text-red-600"
+                                  >
+                                    <XMarkIcon className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              ))}
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={newMotivation}
+                                  onChange={(e) => setNewMotivation(e.target.value)}
+                                  className="flex-grow px-3 py-2 border border-neutral-300 rounded-lg"
+                                  placeholder="输入新动机..."
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (newMotivation.trim()) {
+                                      setMotivations(prev => [...prev, newMotivation.trim()]);
+                                      setNewMotivation('');
+                                    }
+                                  }}
+                                  className="p-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
+                                >
+                                  <PlusIcon className="w-5 h-5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {currentStep === 3 && (
+                        <div className="space-y-6">
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                              下一步行动
+                            </label>
+                            <div className="space-y-2">
+                              {nextSteps.map((step, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    className="rounded border-neutral-300 text-primary focus:ring-primary"
+                                  />
+                                  <span className="flex-grow p-2 bg-neutral-50 rounded-lg">
+                                    {step}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setNextSteps(prev => prev.filter((_, i) => i !== index))}
+                                    className="text-red-500 hover:text-red-600"
+                                  >
+                                    <XMarkIcon className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              ))}
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={newStep}
+                                  onChange={(e) => setNewStep(e.target.value)}
+                                  className="flex-grow px-3 py-2 border border-neutral-300 rounded-lg"
+                                  placeholder="添加新的行动步骤..."
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (newStep.trim()) {
+                                      setNextSteps(prev => [...prev, newStep.trim()]);
+                                      setNewStep('');
+                                    }
+                                  }}
+                                  className="p-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
+                                >
+                                  <PlusIcon className="w-5 h-5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {currentStep === 4 && (
+                        <div className="space-y-6">
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                              触发器设置
+                            </label>
+                            <div className="space-y-4">
+                              {triggers.map((trigger, index) => (
+                                <div key={index} className="p-4 bg-neutral-50 rounded-lg space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">触发器 {index + 1}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setTriggers(prev => prev.filter((_, i) => i !== index))}
+                                      className="text-red-500 hover:text-red-600"
+                                    >
+                                      <XMarkIcon className="w-5 h-5" />
+                                    </button>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <div className="text-sm text-neutral-500 mb-1">当...</div>
+                                      <div className="p-2 bg-white rounded border border-neutral-200">
+                                        {trigger.when}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-sm text-neutral-500 mb-1">则...</div>
+                                      <div className="p-2 bg-white rounded border border-neutral-200">
+                                        {trigger.then}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <input
+                                    type="text"
+                                    value={newTriggerWhen}
+                                    onChange={(e) => setNewTriggerWhen(e.target.value)}
+                                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                                    placeholder="当..."
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={newTriggerThen}
+                                    onChange={(e) => setNewTriggerThen(e.target.value)}
+                                    className="flex-grow px-3 py-2 border border-neutral-300 rounded-lg"
+                                    placeholder="则..."
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (newTriggerWhen.trim() && newTriggerThen.trim()) {
+                                        setTriggers(prev => [...prev, {
+                                          id: Date.now().toString(),
+                                          when: newTriggerWhen.trim(),
+                                          then: newTriggerThen.trim()
+                                        }]);
+                                        setNewTriggerWhen('');
+                                        setNewTriggerThen('');
+                                      }
+                                    }}
+                                    className="p-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
+                                  >
+                                    <PlusIcon className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between pt-6 border-t border-neutral-200">
                       <button
                         type="button"
-                        onClick={() => {
-                          setTriggers(prev => 
-                            prev.filter(t => t.id !== trigger.id)
-                          );
-                        }}
-                        className="text-red-500 hover:text-red-700"
+                        onClick={handlePrevStep}
+                        className={`
+                          px-4 py-2 rounded-lg text-neutral-600 hover:bg-neutral-50
+                          ${currentStep === 0 ? 'invisible' : ''}
+                        `}
                       >
-                        删除
+                        上一步
                       </button>
+                      <div className="flex gap-3">
+                        {!steps[currentStep].required && currentStep < steps.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={handleNextStep}
+                            className="px-4 py-2 text-neutral-600 hover:text-neutral-900"
+                          >
+                            跳过
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleNextStep}
+                          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
+                        >
+                          {currentStep === steps.length - 1 ? '完成' : '下一步'}
+                        </button>
+                      </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
+                  </form>
+                </Dialog.Panel>
+              </Transition.Child>
             </div>
           </div>
-
-          <div className="flex justify-end space-x-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-md hover:bg-gray-50"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              className={`px-4 py-2 text-white rounded-md ${
-                goal 
-                  ? 'bg-green-500 hover:bg-green-600' 
-                  : 'bg-blue-500 hover:bg-blue-600'
-              }`}
-            >
-              {goal ? '保存修改' : '创建目标'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        </Dialog>
+      </Transition>
+    </>
   );
 }; 
