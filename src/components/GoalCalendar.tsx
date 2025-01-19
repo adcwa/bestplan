@@ -5,7 +5,7 @@ import type { Goal, Event } from '@/types/goals';
 import { EventForm } from './index';
 import { motion } from 'framer-motion';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, isSameDay } from 'date-fns';
 import { motionConfig } from '@/utils/motion';
 import { useModal } from '@/contexts/ModalContext';
 
@@ -77,19 +77,20 @@ export const GoalCalendar: React.FC<Props> = ({
   };
 
   return (
-    <div className="space-y-4 h-full flex flex-col relative isolate">
-      <div className="flex items-center justify-between flex-shrink-0">
+    <div className="space-y-4">
+      {/* 日历头部 */}
+      <div className="flex items-center justify-between">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="p-2 rounded-full hover:bg-primary-light text-primary-dark"
+          className="p-2 rounded-full hover:bg-neutral-100"
           onClick={handlePrevMonth}
         >
           <ChevronLeftIcon className="w-5 h-5" />
         </motion.button>
         
         <motion.h3 
-          className="text-lg font-medium text-neutral-900"
+          className="text-lg font-medium bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
           layout
         >
           {format(currentDate, 'yyyy年MM月')}
@@ -98,7 +99,7 @@ export const GoalCalendar: React.FC<Props> = ({
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="p-2 rounded-full hover:bg-primary-light text-primary-dark"
+          className="p-2 rounded-full hover:bg-neutral-100"
           onClick={handleNextMonth}
         >
           <ChevronRightIcon className="w-5 h-5" />
@@ -114,17 +115,21 @@ export const GoalCalendar: React.FC<Props> = ({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 flex-grow">
+      {/* 日历格子 */}
+      <div className="grid grid-cols-7 gap-2">
         {calendar.map((day, index) => {
           const events = day ? getEventsForDay(day) : [];
+          const isToday = day && isSameDay(new Date(), new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
+
           return (
             <motion.div
               key={index}
               whileHover={{ scale: 1.02 }}
               className={`
-                aspect-square p-2 rounded-lg relative group
-                ${day ? 'hover:bg-primary-light cursor-pointer' : 'bg-neutral-50'}
-                ${events.length > 0 ? 'bg-primary-light/30' : ''}
+                relative p-2 rounded-lg transition-colors
+                ${day ? 'hover:bg-primary/5 cursor-pointer' : 'bg-neutral-50/50'}
+                ${isToday ? 'ring-2 ring-primary ring-offset-2' : ''}
+                ${events.length > 0 ? 'bg-primary/5' : ''}
               `}
               onClick={() => handleDayClick(day)}
             >
