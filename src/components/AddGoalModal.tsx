@@ -19,13 +19,17 @@ const DOMAINS: GoalDomain[] = [
   '亲子', '社交', '娱乐', '财务', '健康'
 ];
 
-const steps = [
+const getSteps = (type: GoalType) => [
   { id: 'basic', title: '基本信息', required: true },
   { id: 'time', title: '时间规划', required: true },
   { id: 'motivation', title: '动机计划', required: false },
   { id: 'action', title: '下一步行动', required: false },
   { id: 'trigger', title: '触发器设置', required: false }
-];
+].map(step => ({
+  ...step,
+  // 成就型目标的时间规划不需要频率
+  required: type === 'achievement' && step.id === 'time' ? false : step.required
+}));
 
 export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit }) => {
   const [title, setTitle] = useState('');
@@ -89,9 +93,9 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 检查必填字段
-    if (!title || !startDate || !deadline || !frequency) {
-      alert('请完成所有必填字段');
+    // 修改验证逻辑
+    if (!title || !startDate || !deadline || (type === 'habit' && !frequency.trim())) {
+      showToast('warning', `请完成所有必填字段${type === 'habit' ? '，包括执行频率' : ''}`);
       return;
     }
 
@@ -143,7 +147,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
       title,
       startDate: new Date(startDate),
       deadline: new Date(deadline),
-      frequency,
+      frequency: type === 'habit' ? frequency : undefined, // 只在习惯型目标中设置频率
       domains: selectedDomains,
       motivations,
       nextSteps,
@@ -160,7 +164,6 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
   };
 
   const handleNextStep = () => {
-    // 检查当前步骤是否为必填且是否已完成
     if (steps[currentStep].required) {
       switch (steps[currentStep].id) {
         case 'basic':
@@ -170,8 +173,8 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
           }
           break;
         case 'time':
-          if (!startDate || !deadline || !frequency.trim()) {
-            showToast('warning', '请完成时间规划');
+          if (!startDate || !deadline || (type === 'habit' && !frequency.trim())) {
+            showToast('warning', `请完成${type === 'habit' ? '时间规划和执行频率' : '时间规划'}`);
             return;
           }
           break;
@@ -252,6 +255,9 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
       });
     }
   };
+
+  // 根据目标类型获取步骤
+  const steps = getSteps(type);
 
   return (
     <>
@@ -409,6 +415,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
                       
                       {currentStep === 1 && (
                         <TimeSettings
+                          type={type}
                           startDate={startDate}
                           setStartDate={setStartDate}
                           deadline={deadline}

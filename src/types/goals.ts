@@ -32,7 +32,7 @@ export interface Goal {
   title: string;
   startDate: Date;
   deadline: Date;
-  frequency: string;
+  frequency?: string;
   domains: GoalDomain[];
   motivations: string[];
   nextSteps: string[];

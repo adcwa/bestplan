@@ -140,23 +140,40 @@ const GoalCard = ({
             </motion.button>
           </div>
 
-          {/* 目标进度指示器 - 始终显示 */}
-          <div className="mb-8">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-neutral-600">目标进度</span>
-              <span className="font-medium text-primary">
-                {calculateProgress(goal)}%
-              </span>
+          {/* 只在成就型目标中显示进度条 */}
+          {goal.type === 'achievement' && (
+            <div className="mb-8">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-neutral-600">目标进度</span>
+                <span className="font-medium text-primary">
+                  {calculateProgress(goal)}%
+                </span>
+              </div>
+              <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-primary to-secondary"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${calculateProgress(goal)}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                />
+              </div>
             </div>
-            <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-primary to-secondary"
-                initial={{ width: 0 }}
-                animate={{ width: `${calculateProgress(goal)}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-              />
+          )}
+
+          {/* 习惯型目标显示执行情况 */}
+          {goal.type === 'habit' && (
+            <div className="mb-8">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-neutral-600">执行情况</span>
+                <span className="font-medium text-primary">
+                  {goal.frequency}
+                </span>
+              </div>
+              <div className="text-sm text-neutral-500">
+                已坚持 {Math.ceil((new Date().getTime() - new Date(goal.startDate).getTime()) / (1000 * 60 * 60 * 24))} 天
+              </div>
             </div>
-          </div>
+          )}
 
           {/* 基本信息卡片 - 始终显示 */}
           <div className="space-y-4">
@@ -171,10 +188,12 @@ const GoalCard = ({
                   <span>截止时间</span>
                   <span>{formatDate(goal.deadline)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>执行频率</span>
-                  <span>{goal.frequency}</span>
-                </div>
+                {goal.type === 'habit' && (
+                  <div className="flex justify-between">
+                    <span>执行频率</span>
+                    <span>{goal.frequency}</span>
+                  </div>
+                )}
               </div>
             </div>
 
