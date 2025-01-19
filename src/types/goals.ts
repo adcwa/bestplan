@@ -10,7 +10,9 @@ export interface Trigger {
 export interface Event {
   id: string;
   date: Date;
-  description: string;
+  content: string;
+  isCompleted: boolean;
+  note?: string;
 }
 
 export interface GoalHistory {

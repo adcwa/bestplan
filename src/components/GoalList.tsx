@@ -14,10 +14,11 @@ interface Props {
   title: string;
   goals: Goal[];
   type: GoalType;
-  onAddEvent: (goalId: string, event: Omit<Event, 'id'>) => void;
+  onAddEvent: (goalId: string, date: Date) => void;
   onEditGoal: (goal: Goal) => void;
   onDeleteEvent: (eventId: string) => void;
   onAddGoal?: (type: GoalType) => void;
+  onEditEvent: (goalId: string, event: Event) => void;
 }
 
 export const GoalList: React.FC<Props> = ({ 
@@ -27,7 +28,8 @@ export const GoalList: React.FC<Props> = ({
   onAddEvent,
   onEditGoal,
   onDeleteEvent,
-  onAddGoal
+  onAddGoal,
+  onEditEvent
 }) => {
   return (
     <motion.div 
@@ -166,7 +168,12 @@ export const GoalList: React.FC<Props> = ({
             </div>
             {/* 右侧：进展日历 */}
             <div className="md:col-span-6 p-4 h-full bg-white overflow-y-auto relative">
-              <GoalCalendar goal={goal} onAddEvent={onAddEvent} onDeleteEvent={onDeleteEvent} />
+              <GoalCalendar 
+                goal={goal} 
+                onAddEvent={onAddEvent} 
+                onDeleteEvent={onDeleteEvent}
+                onEditEvent={onEditEvent}
+              />
             </div>
           </div>
         </FadeInView>

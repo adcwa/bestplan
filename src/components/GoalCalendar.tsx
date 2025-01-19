@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { Goal, Event } from '../types/goals';
+import type { Goal, Event } from '@/types/goals';
 import { EventForm } from './index';
 import { motion } from 'framer-motion';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
@@ -12,10 +12,16 @@ import { useModal } from '@/contexts/ModalContext';
 interface Props {
   goal: Goal;
   onAddEvent: (goalId: string, date: Date) => void;
-  onDeleteEvent: (goalId: string, eventId: string) => void;
+  onEditEvent: (goalId: string, event: Event) => void;
+  onDeleteEvent: (eventId: string) => void;
 }
 
-export const GoalCalendar: React.FC<Props> = ({ goal, onAddEvent, onDeleteEvent }) => {
+export const GoalCalendar: React.FC<Props> = ({
+  goal,
+  onAddEvent,
+  onEditEvent,
+  onDeleteEvent
+}) => {
   const { openModal, closeModal, setActiveModalId } = useModal();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showEventForm, setShowEventForm] = useState(false);
@@ -60,15 +66,14 @@ export const GoalCalendar: React.FC<Props> = ({ goal, onAddEvent, onDeleteEvent 
     onAddEvent(goal.id, date);
   };
 
-  const handleEventClick = (e: React.MouseEvent, event: Event) => {
-    e.stopPropagation(); // 阻止事件冒泡到日期单元格
+  const handleEventClick = (event: Event) => {
     setSelectedEvent(event);
+    onEditEvent(goal.id, event);
   };
 
   const handleDeleteEvent = (e: React.MouseEvent, eventId: string) => {
-    e.stopPropagation(); // 阻止事件冒泡
-    onDeleteEvent(goal.id, eventId);
-    setSelectedEvent(null);
+    e.stopPropagation();
+    onDeleteEvent(eventId);
   };
 
   return (
@@ -128,6 +133,20 @@ export const GoalCalendar: React.FC<Props> = ({ goal, onAddEvent, onDeleteEvent 
                   <span className="text-sm text-neutral-600">
                     {day}
                   </span>
+                  {/* 默认显示事件标题 */}
+                  {events.length > 0 && (
+                    <div className="mt-1">
+                      {events.map(event => (
+                        <div 
+                          key={event.id}
+                          className="text-xs text-neutral-600 truncate"
+                        >
+                          {event.content}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Hover 时显示详细信息和操作按钮 */}
                   {events.length > 0 && (
                     <div 
                       className="absolute inset-0 p-2 bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg overflow-y-auto"
@@ -138,11 +157,23 @@ export const GoalCalendar: React.FC<Props> = ({ goal, onAddEvent, onDeleteEvent 
                           <li 
                             key={event.id} 
                             className="flex items-center justify-between group/event relative"
-                            onClick={(e) => handleEventClick(e, event)}
                           >
-                            <span className="line-clamp-2 text-neutral-600 flex-grow">
-                              {event.description}
-                            </span>
+                            <div 
+                              className="flex-grow cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEventClick(event);
+                              }}
+                            >
+                              <span className="line-clamp-2 text-neutral-600">
+                                {event.content}
+                              </span>
+                              {event.note && (
+                                <div className="text-xs text-gray-500 line-clamp-1">
+                                  {event.note}
+                                </div>
+                              )}
+                            </div>
                             <button
                               className="text-red-500 opacity-0 group-hover/event:opacity-100 transition-opacity ml-2"
                               onClick={(e) => handleDeleteEvent(e, event.id)}
@@ -166,8 +197,9 @@ export const GoalCalendar: React.FC<Props> = ({ goal, onAddEvent, onDeleteEvent 
         <EventForm
           goalId={goal.id}
           initialDate={selectedDate}
+          event={selectedEvent}
           onSubmit={(event) => {
-            onAddEvent(goal.id, event);
+            onEditEvent(goal.id, event);
             setShowEventForm(false);
             setSelectedDate(null);
             closeModal();

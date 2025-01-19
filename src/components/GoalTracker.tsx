@@ -22,6 +22,7 @@ const GoalTracker: React.FC = () => {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   // 初始加载数据
   useEffect(() => {
@@ -69,24 +70,40 @@ const GoalTracker: React.FC = () => {
     try {
       const updatedGoals = goals.map(goal => {
         if (goal.id === goalId) {
-          const updatedGoal = {
-            ...goal,
-            events: [...goal.events, {
+          let updatedEvents;
+          
+          if (editingEvent) {
+            // 编辑现有事件
+            updatedEvents = goal.events.map(e => 
+              e.id === editingEvent.id 
+                ? { ...e, ...event }
+                : e
+            );
+          } else {
+            // 添加新事件
+            updatedEvents = [...goal.events, {
               id: generateId(),
               ...event
-            }]
+            }];
+          }
+
+          const updatedGoal = {
+            ...goal,
+            events: updatedEvents
           };
           storage.updateGoal(updatedGoal);
           return updatedGoal;
         }
         return goal;
       });
+
       setGoals(updatedGoals);
       setIsEventModalOpen(false);
       setSelectedGoalId(null);
       setSelectedDate(null);
+      setEditingEvent(null);
     } catch (error) {
-      console.error('Failed to add event:', error);
+      console.error('Failed to save event:', error);
     }
   };
 
@@ -96,24 +113,31 @@ const GoalTracker: React.FC = () => {
     setIsEventModalOpen(true);
   };
 
-  const handleDeleteEvent = async (goalId: string, eventId: string) => {
+  const handleDeleteEvent = async (eventId: string) => {
     try {
       const updatedGoals = goals.map(goal => {
-        if (goal.id === goalId) {
+        const hasEvent = goal.events.some(e => e.id === eventId);
+        if (hasEvent) {
           const updatedGoal = {
             ...goal,
-            events: goal.events.filter(event => event.id !== eventId)
+            events: goal.events.filter(e => e.id !== eventId)
           };
-          // 异步更新存储
           storage.updateGoal(updatedGoal);
           return updatedGoal;
         }
         return goal;
       });
+      
       setGoals(updatedGoals);
     } catch (error) {
       console.error('Failed to delete event:', error);
     }
+  };
+
+  const handleEditEvent = (goalId: string, event: Event) => {
+    setSelectedGoalId(goalId);
+    setEditingEvent(event);
+    setIsEventModalOpen(true);
   };
 
   const achievementGoals = goals.filter(goal => goal.type === 'achievement');
@@ -146,6 +170,7 @@ const GoalTracker: React.FC = () => {
           onEditGoal={handleEditGoal}
           onDeleteEvent={handleDeleteEvent}
           onAddGoal={handleAddGoalClick}
+          onEditEvent={handleEditEvent}
         />
         <GoalList 
           title="习惯型目标" 
@@ -155,6 +180,7 @@ const GoalTracker: React.FC = () => {
           onEditGoal={handleEditGoal}
           onDeleteEvent={handleDeleteEvent}
           onAddGoal={handleAddGoalClick}
+          onEditEvent={handleEditEvent}
         />
       </div>
 
@@ -171,15 +197,17 @@ const GoalTracker: React.FC = () => {
         />
       )}
 
-      {isEventModalOpen && selectedGoalId && selectedDate && (
+      {isEventModalOpen && selectedGoalId && (
         <EventForm
           goalId={selectedGoalId}
-          initialDate={selectedDate}
+          initialDate={editingEvent?.date || selectedDate!}
+          event={editingEvent}
           onSubmit={handleAddEvent}
           onClose={() => {
             setIsEventModalOpen(false);
             setSelectedGoalId(null);
             setSelectedDate(null);
+            setEditingEvent(null);
           }}
         />
       )}
