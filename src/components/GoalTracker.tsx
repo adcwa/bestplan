@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { Goal, GoalType, Event } from '../types/goals';
 import { GoalList, AddGoalModal, EventForm } from './index';
 import { getStorageService } from '../services/storage';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CommandPalette } from './CommandPalette';
+import { AISettings } from '@/types/command';
 
 const storage = getStorageService();
 
@@ -23,6 +25,15 @@ export const GoalTracker: React.FC = () => {
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [aiSettings, setAISettings] = useState<AISettings>(() => {
+    const saved = localStorage.getItem('aiSettings');
+    return saved ? JSON.parse(saved) : {
+      openApiKey: '',
+      baseUrl: 'https://api.deepseek.com/v1/chat/completions',
+      modelName: 'deepseek-chat'
+    };
+  });
 
   // 初始加载数据
   useEffect(() => {
@@ -37,6 +48,43 @@ export const GoalTracker: React.FC = () => {
     };
     loadGoals();
   }, []);
+
+  // 处理全局快捷键
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+      event.preventDefault();
+      setIsCommandPaletteOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+  // 处理 AI 设置更新
+  const handleUpdateAISettings = (newSettings: AISettings) => {
+    setAISettings(newSettings);
+    localStorage.setItem('aiSettings', JSON.stringify(newSettings));
+  };
+
+  // 处理数据导出
+  const handleExport = () => {
+    const dataStr = JSON.stringify(goals, null, 2);
+    const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
+    const exportFileDefaultName = `goals-${new Date().toISOString()}.json`;
+
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  // 处理数据导入
+  const handleImport = (importedGoals: Goal[]) => {
+    setGoals(importedGoals);
+    storage.saveGoals(importedGoals);
+  };
 
   const handleEditGoal = (goal: Goal) => {
     setEditingGoal(goal);
@@ -270,6 +318,19 @@ export const GoalTracker: React.FC = () => {
           }}
         />
       )}
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        goals={goals}
+        aiSettings={aiSettings}
+        onUpdateAISettings={handleUpdateAISettings}
+        onExport={handleExport}
+        onImport={handleImport}
+        onSearch={(goal) => {
+          // 实现搜索跳转逻辑
+        }}
+      />
     </div>
   );
 };
