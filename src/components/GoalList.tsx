@@ -21,6 +21,7 @@ interface Props {
   onDeleteEvent: (eventId: string) => void;
   onAddGoal?: (type: GoalType) => void;
   onEditEvent: (goalId: string, event: Event) => void;
+  onUpdateNextSteps: (goalId: string, stepId: string, isCompleted: boolean) => void;
 }
 
 interface GoalCardProps {
@@ -29,7 +30,30 @@ interface GoalCardProps {
   onAddEvent: (goalId: string, date: Date) => void;
   onDeleteEvent: (eventId: string) => void;
   onEditEvent: (goalId: string, event: Event) => void;
+  onUpdateNextSteps: (goalId: string, stepId: string, isCompleted: boolean) => void;
 }
+
+interface NextStepProps {
+  step: string;
+  isCompleted: boolean;
+  onToggle: () => void;
+}
+
+const NextStepItem = ({ step, isCompleted, onToggle }: NextStepProps) => (
+  <div className="flex items-center gap-2 group">
+    <input
+      type="checkbox"
+      checked={isCompleted}
+      onChange={onToggle}
+      className="rounded border-neutral-300 text-primary focus:ring-primary"
+    />
+    <span className={`flex-1 transition-colors ${
+      isCompleted ? 'text-neutral-400 line-through' : 'text-neutral-700'
+    }`}>
+      {step}
+    </span>
+  </div>
+);
 
 // 添加计算进度的函数
 const calculateProgress = (goal: Goal): number => {
@@ -54,9 +78,15 @@ const GoalCard = ({
   onEditGoal,
   onAddEvent,
   onDeleteEvent,
-  onEditEvent 
+  onEditEvent,
+  onUpdateNextSteps
 }: GoalCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // 处理步骤状态更新
+  const handleStepStatusChange = (step: string, isCompleted: boolean) => {
+    onUpdateNextSteps(goal.id, step, isCompleted);
+  };
 
   return (
     <FadeInView
@@ -176,18 +206,17 @@ const GoalCard = ({
                   {/* 下一步行动 */}
                   {goal.nextSteps.length > 0 && (
                     <div className="p-4 bg-white rounded-lg border border-neutral-200">
-                      <h4 className="font-medium text-neutral-900 mb-2">下一步行动</h4>
-                      <ul className="space-y-2">
+                      <h4 className="font-medium text-neutral-900 mb-3">下一步行动</h4>
+                      <div className="space-y-2">
                         {goal.nextSteps.map((step, index) => (
-                          <li key={index} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="rounded border-neutral-300 text-primary focus:ring-primary"
-                            />
-                            <span>{step}</span>
-                          </li>
+                          <NextStepItem
+                            key={index}
+                            step={step}
+                            isCompleted={goal.nextStepStatus[step] || false}
+                            onToggle={() => handleStepStatusChange(step, !goal.nextStepStatus[step])}
+                          />
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
 
@@ -293,7 +322,8 @@ export const GoalList: React.FC<Props> = ({
   onEditGoal,
   onDeleteEvent,
   onAddGoal,
-  onEditEvent
+  onEditEvent,
+  onUpdateNextSteps
 }) => {
   return (
     <motion.div 
@@ -352,6 +382,7 @@ export const GoalList: React.FC<Props> = ({
               onAddEvent={onAddEvent}
               onDeleteEvent={onDeleteEvent}
               onEditEvent={onEditEvent}
+              onUpdateNextSteps={onUpdateNextSteps}
             />
           ))
         )}

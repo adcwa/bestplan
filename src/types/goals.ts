@@ -41,6 +41,7 @@ export interface Goal {
   events: Event[];
   history: GoalHistory[];
   lastModified: Date;
+  nextStepStatus: Record<string, boolean>;
 }
 
 export interface HabitTracking {

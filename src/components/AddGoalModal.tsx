@@ -55,6 +55,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const stepsContainerRef = useRef<HTMLDivElement>(null);
+  const [localNextStepStatus, setLocalNextStepStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (goal) {
@@ -67,6 +68,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
       setNextSteps(goal.nextSteps);
       setRewards(goal.rewards);
       setTriggers(goal.triggers);
+      setLocalNextStepStatus(goal.nextStepStatus || {});
     }
   }, [goal]);
 
@@ -75,6 +77,13 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
     setTimeout(() => {
       setToast(prev => ({ ...prev, show: false }));
     }, 3000);
+  };
+
+  const handleLocalStepStatusChange = (step: string, isCompleted: boolean) => {
+    setLocalNextStepStatus(prev => ({
+      ...prev,
+      [step]: isCompleted
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -128,7 +137,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
       });
     }
 
-    const newGoal: Goal = {
+    const updatedGoal: Goal = {
       id: goal?.id || Date.now().toString(),
       type,
       title,
@@ -138,6 +147,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
       domains: selectedDomains,
       motivations,
       nextSteps,
+      nextStepStatus: localNextStepStatus,
       rewards,
       triggers,
       events: goal?.events || [],
@@ -145,8 +155,8 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
       lastModified: now
     };
 
-    onSubmit(newGoal);
-    onClose(); // 确保只在提交成功后关闭弹窗
+    onSubmit(updatedGoal);
+    onClose();
   };
 
   const handleNextStep = () => {
@@ -466,44 +476,57 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
                             </label>
                             <div className="space-y-2">
                               {nextSteps.map((step, index) => (
-                                <div key={index} className="flex items-center gap-2">
+                                <div 
+                                  key={index} 
+                                  className="flex items-center gap-2 bg-neutral-50 rounded-lg pr-2 w-full group hover:bg-neutral-100 transition-colors"
+                                >
                                   <input
                                     type="checkbox"
-                                    className="rounded border-neutral-300 text-primary focus:ring-primary"
+                                    checked={localNextStepStatus[step] || false}
+                                    onChange={() => handleLocalStepStatusChange(step, !localNextStepStatus[step])}
+                                    className="ml-2 rounded border-neutral-300 text-primary focus:ring-primary"
                                   />
-                                  <span className="flex-grow p-2 bg-neutral-50 rounded-lg">
+                                  <span className={`flex-1 p-2 ${
+                                    localNextStepStatus[step] ? 'text-neutral-400 line-through' : 'text-neutral-700'
+                                  }`}>
                                     {step}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => setNextSteps(prev => prev.filter((_, i) => i !== index))}
-                                    className="text-red-500 hover:text-red-600"
+                                    className="text-neutral-400 hover:text-red-500 transition-colors"
                                   >
                                     <XMarkIcon className="w-5 h-5" />
                                   </button>
                                 </div>
                               ))}
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  value={newStep}
-                                  onChange={(e) => setNewStep(e.target.value)}
-                                  className="flex-grow px-3 py-2 border border-neutral-300 rounded-lg"
-                                  placeholder="添加新的行动步骤..."
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (newStep.trim()) {
-                                      setNextSteps(prev => [...prev, newStep.trim()]);
-                                      setNewStep('');
-                                    }
-                                  }}
-                                  className="p-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
-                                >
-                                  <PlusIcon className="w-5 h-5" />
-                                </button>
-                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-2">
+                              <input
+                                type="text"
+                                value={newStep}
+                                onChange={(e) => setNewStep(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && newStep.trim()) {
+                                    setNextSteps(prev => [...prev, newStep.trim()]);
+                                    setNewStep('');
+                                  }
+                                }}
+                                className="flex-grow px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary focus:border-primary"
+                                placeholder="添加新的行动步骤..."
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (newStep.trim()) {
+                                    setNextSteps(prev => [...prev, newStep.trim()]);
+                                    setNewStep('');
+                                  }
+                                }}
+                                className="p-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                              >
+                                <PlusIcon className="w-5 h-5" />
+                              </button>
                             </div>
                           </div>
                         </div>

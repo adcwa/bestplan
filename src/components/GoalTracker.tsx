@@ -148,6 +148,21 @@ const GoalTracker: React.FC = () => {
     setIsAddModalOpen(true);
   };
 
+  const handleUpdateNextSteps = (goalId: string, stepId: string, isCompleted: boolean) => {
+    setGoals(prev => prev.map(goal => {
+      if (goal.id === goalId) {
+        return {
+          ...goal,
+          nextStepStatus: {
+            ...goal.nextStepStatus,
+            [stepId]: isCompleted
+          }
+        };
+      }
+      return goal;
+    }));
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 mt-1">
       <div className="flex justify-between items-center">
@@ -171,6 +186,7 @@ const GoalTracker: React.FC = () => {
           onDeleteEvent={handleDeleteEvent}
           onAddGoal={handleAddGoalClick}
           onEditEvent={handleEditEvent}
+          onUpdateNextSteps={handleUpdateNextSteps}
         />
         <GoalList 
           title="习惯型目标" 
@@ -181,6 +197,7 @@ const GoalTracker: React.FC = () => {
           onDeleteEvent={handleDeleteEvent}
           onAddGoal={handleAddGoalClick}
           onEditEvent={handleEditEvent}
+          onUpdateNextSteps={handleUpdateNextSteps}
         />
       </div>
 
