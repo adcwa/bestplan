@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Goal, GoalType, Event } from '../types/goals';
 import { GoalList, AddGoalModal, EventForm } from './index';
 import { getStorageService } from '../services/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CommandPalette } from './CommandPalette';
 import { AISettings } from '@/types/command';
+import { createPortal } from 'react-dom';
 
 const storage = getStorageService();
 
@@ -31,6 +32,12 @@ export const GoalTracker: React.FC = () => {
     baseUrl: 'https://api.deepseek.com/v1/chat/completions',
     modelName: 'deepseek-chat'
   });
+  const [isMounted, setIsMounted] = useState(false);
+
+  // 在客户端挂载后设置 isMounted
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // 初始加载数据
   useEffect(() => {
@@ -99,11 +106,39 @@ export const GoalTracker: React.FC = () => {
     storage.saveGoals(importedGoals);
   };
 
-  const handleEditGoal = (goal: Goal) => {
+  // 优化事件处理函数，防止冒泡
+  const handleEventModalOpen = useCallback((goalId: string, date: Date, e?: React.MouseEvent) => {
+    e?.stopPropagation(); // 阻止事件冒泡
+    setSelectedGoalId(goalId);
+    setSelectedDate(date);
+    setIsEventModalOpen(true);
+  }, []);
+
+  // 优化添加目标点击事件
+  const handleAddGoalClick = useCallback((type: GoalType, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedGoalType(type);
+    setIsAddModalOpen(true);
+  }, []);
+
+  // 优化编辑目标事件
+  const handleEditGoal = useCallback((goal: Goal, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setEditingGoal(goal);
     setSelectedGoalType(goal.type);
     setIsAddModalOpen(true);
-  };
+  }, []);
+
+  // 使用 useMemo 缓存目标列表
+  const achievementGoals = useMemo(() => 
+    goals.filter(goal => goal.type === 'achievement'),
+    [goals]
+  );
+  
+  const habitGoals = useMemo(() => 
+    goals.filter(goal => goal.type === 'habit'),
+    [goals]
+  );
 
   const handleAddGoal = async (newGoal: Goal) => {
     try {
@@ -168,12 +203,6 @@ export const GoalTracker: React.FC = () => {
     }
   };
 
-  const handleEventModalOpen = (goalId: string, date: Date) => {
-    setSelectedGoalId(goalId);
-    setSelectedDate(date);
-    setIsEventModalOpen(true);
-  };
-
   const handleDeleteEvent = async (eventId: string) => {
     try {
       const updatedGoals = goals.map(goal => {
@@ -201,14 +230,6 @@ export const GoalTracker: React.FC = () => {
     setIsEventModalOpen(true);
   };
 
-  const achievementGoals = goals.filter(goal => goal.type === 'achievement');
-  const habitGoals = goals.filter(goal => goal.type === 'habit');
-
-  const handleAddGoalClick = (type: GoalType) => {
-    setSelectedGoalType(type);
-    setIsAddModalOpen(true);
-  };
-
   const handleUpdateNextSteps = (goalId: string, stepId: string, isCompleted: boolean) => {
     setGoals(prev => prev.map(goal => {
       if (goal.id === goalId) {
@@ -223,6 +244,24 @@ export const GoalTracker: React.FC = () => {
       return goal;
     }));
   };
+
+  // 统一处理模态框关闭
+  const handleModalClose = useCallback(() => {
+    setIsAddModalOpen(false);
+    setSelectedGoalType(null);
+    setEditingGoal(null);
+  }, []);
+
+  const handleEventModalClose = useCallback(() => {
+    setIsEventModalOpen(false);
+    setSelectedGoalId(null);
+    setSelectedDate(null);
+    setEditingEvent(null);
+  }, []);
+
+  const handleCommandPaletteClose = useCallback(() => {
+    setIsCommandPaletteOpen(false);
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 mt-1">
@@ -304,46 +343,42 @@ export const GoalTracker: React.FC = () => {
         />
       </div>
 
-      {isAddModalOpen && selectedGoalType && (
-        <AddGoalModal
-          type={selectedGoalType}
-          goal={editingGoal}
-          onClose={() => {
-            setIsAddModalOpen(false);
-            setSelectedGoalType(null);
-            setEditingGoal(null);
-          }}
-          onSubmit={handleAddGoal}
-        />
-      )}
+      {/* 只在客户端渲染模态框 */}
+      {isMounted && (
+        <>
+          {isAddModalOpen && selectedGoalType && (
+            <AddGoalModal
+              type={selectedGoalType}
+              goal={editingGoal}
+              onClose={handleModalClose}
+              onSubmit={handleAddGoal}
+            />
+          )}
 
-      {isEventModalOpen && selectedGoalId && (
-        <EventForm
-          goalId={selectedGoalId}
-          initialDate={editingEvent?.date || selectedDate!}
-          event={editingEvent}
-          onSubmit={handleAddEvent}
-          onClose={() => {
-            setIsEventModalOpen(false);
-            setSelectedGoalId(null);
-            setSelectedDate(null);
-            setEditingEvent(null);
-          }}
-        />
-      )}
+          {isEventModalOpen && selectedGoalId && (
+            <EventForm
+              goalId={selectedGoalId}
+              initialDate={editingEvent?.date || selectedDate!}
+              event={editingEvent}
+              onSubmit={handleAddEvent}
+              onClose={handleEventModalClose}
+            />
+          )}
 
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-        goals={goals}
-        aiSettings={aiSettings}
-        onUpdateAISettings={handleUpdateAISettings}
-        onExport={handleExport}
-        onImport={handleImport}
-        onSearch={(goal) => {
-          // 实现搜索跳转逻辑
-        }}
-      />
+          <CommandPalette
+            isOpen={isCommandPaletteOpen}
+            onClose={handleCommandPaletteClose}
+            goals={goals}
+            aiSettings={aiSettings}
+            onUpdateAISettings={handleUpdateAISettings}
+            onExport={handleExport}
+            onImport={handleImport}
+            onSearch={(goal) => {
+              // 实现搜索跳转逻辑
+            }}
+          />
+        </>
+      )}
     </div>
   );
 };

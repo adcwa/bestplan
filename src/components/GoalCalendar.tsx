@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import type { Goal, Event } from '@/types/goals';
 import { EventForm } from './index';
 import { motion } from 'framer-motion';
@@ -60,21 +60,32 @@ export const GoalCalendar: React.FC<Props> = ({
     });
   };
 
-  const handleDayClick = (day: number | null) => {
-    if (!day) return;
-    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+  const handleDateClick = useCallback((date: Date, e: React.MouseEvent) => {
+    e.stopPropagation();
     onAddEvent(goal.id, date);
-  };
+  }, [onAddEvent, goal.id]);
 
-  const handleEventClick = (event: Event) => {
-    setSelectedEvent(event);
+  const handleEventClick = useCallback((event: Event, e: React.MouseEvent) => {
+    e.stopPropagation();
     onEditEvent(goal.id, event);
-  };
+  }, [onEditEvent, goal.id]);
 
   const handleDeleteEvent = (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
     onDeleteEvent(eventId);
   };
+
+  // 使用 useMemo 缓存事件数据
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, Event[]>();
+    goal.events.forEach(event => {
+      const dateStr = format(new Date(event.date), 'yyyy-MM-dd');
+      const dateEvents = map.get(dateStr) || [];
+      dateEvents.push(event);
+      map.set(dateStr, dateEvents);
+    });
+    return map;
+  }, [goal.events]);
 
   return (
     <div className="space-y-4">
@@ -131,7 +142,7 @@ export const GoalCalendar: React.FC<Props> = ({
                 ${isToday ? 'ring-2 ring-primary ring-offset-2' : ''}
                 ${events.length > 0 ? 'bg-primary/5' : ''}
               `}
-              onClick={() => handleDayClick(day)}
+              onClick={(e) => handleDateClick(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), e)}
             >
               {day && (
                 <>
@@ -165,10 +176,7 @@ export const GoalCalendar: React.FC<Props> = ({
                           >
                             <div 
                               className="flex-grow cursor-pointer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEventClick(event);
-                              }}
+                              onClick={(e) => handleEventClick(event, e)}
                             >
                               <span className="line-clamp-2 text-neutral-600">
                                 {event.content}

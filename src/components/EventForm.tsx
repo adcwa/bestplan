@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import type { Event } from '@/types/goals';
 
@@ -9,7 +9,7 @@ interface Props {
   initialDate: Date;
   event?: Event;  // 新增，用于编辑模式
   onSubmit: (goalId: string, event: Omit<Event, 'id'>) => void;
-  onClose: () => void;
+  onClose: () => void;  // 简化为无参数函数
 }
 
 export const EventForm: React.FC<Props> = ({
@@ -31,22 +31,34 @@ export const EventForm: React.FC<Props> = ({
     }
   }, [event]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     onSubmit(goalId, {
       date: initialDate,
       content: content.trim(),
       note: note.trim(),
       isCompleted
     });
-  };
+  }, [goalId, initialDate, content, note, isCompleted, onSubmit]);
+
+  const handleOverlayClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      e.stopPropagation();
+      onClose();
+    }
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={handleOverlayClick}
+    >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         className="bg-white rounded-lg p-6 w-full max-w-md"
+        onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
       >
         <h2 className="text-xl font-semibold mb-4">
           {event ? '编辑事件' : '添加事件'}
