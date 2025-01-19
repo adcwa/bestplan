@@ -344,6 +344,8 @@ export const GoalList: React.FC<Props> = ({
   onEditEvent,
   onUpdateNextSteps
 }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
   return (
     <motion.div 
       className="space-y-8 relative"
@@ -351,12 +353,25 @@ export const GoalList: React.FC<Props> = ({
       initial="initial"
       animate="animate"
     >
-      {/* 标题区域优化 */}
-      <div className="flex items-center justify-between mb-8">
+      {/* 标题区域优化 - 添加折叠功能 */}
+      <div 
+        className="flex items-center justify-between mb-8 cursor-pointer group"
+        onClick={() => setIsExpanded(!isExpanded)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && setIsExpanded(!isExpanded)}
+      >
         <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {title}
-          </h2>
+          <div className="flex items-center gap-2">
+            <ChevronDownIcon 
+              className={`w-5 h-5 text-neutral-500 transition-transform duration-200 ${
+                isExpanded ? 'rotate-0' : '-rotate-90'
+              }`}
+            />
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              {title}
+            </h2>
+          </div>
           <div className="text-sm text-neutral-500">
             共 {goals.length} 个目标
           </div>
@@ -365,7 +380,10 @@ export const GoalList: React.FC<Props> = ({
           <motion.button
             whileHover={{ scale: 1.05, backgroundColor: 'rgb(var(--color-primary))' }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onAddGoal(type)}
+            onClick={(e) => {
+              e.stopPropagation(); // 防止触发折叠
+              onAddGoal(type);
+            }}
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 hover:text-white transition-all duration-300"
           >
             <PlusIcon className="w-4 h-4" />
@@ -374,38 +392,54 @@ export const GoalList: React.FC<Props> = ({
         )}
       </div>
 
-      {/* 目标卡片网格 */}
-      <div className="grid gap-8">
-        {goals.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-12 bg-neutral-50/50 rounded-2xl"
-          >
-            <div className="text-neutral-400 mb-4">还没有{type === 'achievement' ? '成就' : '习惯'}目标</div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onAddGoal?.(type)}
-              className="text-primary hover:text-primary-dark"
+      {/* 修改目标卡片网格的动画实现 */}
+      <motion.div
+        animate={{
+          height: isExpanded ? 'auto' : 0,
+          opacity: isExpanded ? 1 : 0,
+          marginTop: isExpanded ? '2rem' : 0
+        }}
+        initial={false}
+        transition={{
+          duration: 0.3,
+          ease: 'easeInOut'
+        }}
+        className="overflow-hidden"
+      >
+        <div className="grid gap-8">
+          {goals.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12 bg-neutral-50/50 rounded-2xl"
             >
-              立即添加 →
-            </motion.button>
-          </motion.div>
-        ) : (
-          goals.map((goal) => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              onEditGoal={onEditGoal}
-              onAddEvent={onAddEvent}
-              onDeleteEvent={onDeleteEvent}
-              onEditEvent={onEditEvent}
-              onUpdateNextSteps={onUpdateNextSteps}
-            />
-          ))
-        )}
-      </div>
+              <div className="text-neutral-400 mb-4">
+                还没有{type === 'achievement' ? '成就' : '习惯'}目标
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onAddGoal?.(type)}
+                className="text-primary hover:text-primary-dark"
+              >
+                立即添加 →
+              </motion.button>
+            </motion.div>
+          ) : (
+            goals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                onEditGoal={onEditGoal}
+                onAddEvent={onAddEvent}
+                onDeleteEvent={onDeleteEvent}
+                onEditEvent={onEditEvent}
+                onUpdateNextSteps={onUpdateNextSteps}
+              />
+            ))
+          )}
+        </div>
+      </motion.div>
     </motion.div>
   );
 };
