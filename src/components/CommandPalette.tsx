@@ -6,9 +6,15 @@ import {
   ArrowUpTrayIcon, 
   MagnifyingGlassIcon,
   Cog6ToothIcon,
-  SparklesIcon
+  SparklesIcon,
+  ClipboardIcon,
+  ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 import { Goal } from '@/types/goals';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface Props {
   isOpen: boolean;
@@ -74,6 +80,7 @@ export const CommandPalette: React.FC<Props> = ({
   const [aiPrompt, setAiPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
 
   const filteredCommands = query === ''
     ? commands
@@ -158,6 +165,49 @@ export const CommandPalette: React.FC<Props> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCopyResponse = async () => {
+    try {
+      await navigator.clipboard.writeText(aiResponse);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
+  };
+
+  // 自定义 Markdown 组件
+  const MarkdownComponents = {
+    code({ node, inline, className, children, ...props }: any) {
+      const match = /language-(\w+)/.exec(className || '');
+      return !inline && match ? (
+        <SyntaxHighlighter
+          style={tomorrow}
+          language={match[1]}
+          PreTag="div"
+          className="rounded-md"
+          {...props}
+        >
+          {String(children).replace(/\n$/, '')}
+        </SyntaxHighlighter>
+      ) : (
+        <code className={`${className} bg-neutral-100 rounded px-1`} {...props}>
+          {children}
+        </code>
+      );
+    },
+    // 其他 Markdown 组件样式
+    p: (props: any) => <p className="mb-4" {...props} />,
+    h1: (props: any) => <h1 className="text-2xl font-bold mb-4" {...props} />,
+    h2: (props: any) => <h2 className="text-xl font-bold mb-3" {...props} />,
+    h3: (props: any) => <h3 className="text-lg font-bold mb-2" {...props} />,
+    ul: (props: any) => <ul className="list-disc pl-6 mb-4" {...props} />,
+    ol: (props: any) => <ol className="list-decimal pl-6 mb-4" {...props} />,
+    li: (props: any) => <li className="mb-1" {...props} />,
+    blockquote: (props: any) => (
+      <blockquote className="border-l-4 border-neutral-300 pl-4 italic my-4" {...props} />
+    ),
   };
 
   return (
@@ -336,10 +386,30 @@ export const CommandPalette: React.FC<Props> = ({
                           </button>
                         </div>
                         {aiResponse && (
-                          <div className="mt-4 p-4 bg-neutral-50 rounded-md">
-                            <pre className="whitespace-pre-wrap text-sm text-neutral-700">
-                              {aiResponse}
-                            </pre>
+                          <div className="mt-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-sm font-medium text-neutral-700">AI 响应</h3>
+                              <button
+                                onClick={handleCopyResponse}
+                                className="flex items-center gap-1 px-2 py-1 text-sm text-neutral-600 hover:text-primary transition-colors"
+                              >
+                                {isCopied ? (
+                                  <ClipboardDocumentCheckIcon className="w-4 h-4 text-green-500" />
+                                ) : (
+                                  <ClipboardIcon className="w-4 h-4" />
+                                )}
+                                {isCopied ? '已复制' : '复制'}
+                              </button>
+                            </div>
+                            <div className="p-4 bg-neutral-50 rounded-md overflow-auto max-h-96">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={MarkdownComponents}
+                                className="prose prose-neutral max-w-none"
+                              >
+                                {aiResponse}
+                              </ReactMarkdown>
+                            </div>
                           </div>
                         )}
                       </div>
