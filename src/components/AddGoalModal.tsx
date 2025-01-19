@@ -416,40 +416,43 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
                             </label>
                             <div className="space-y-2">
                               {motivations.map((motivation, index) => (
-                                <div key={index} className="flex items-center gap-2">
-                                  <span className="flex-grow p-2 bg-neutral-50 rounded-lg">
+                                <div 
+                                  key={index} 
+                                  className="flex items-center gap-2 bg-neutral-50 rounded-lg pr-2 w-full group hover:bg-neutral-100 transition-colors"
+                                >
+                                  <span className="flex-1 p-2 break-words min-w-0">
                                     {motivation}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => setMotivations(prev => prev.filter((_, i) => i !== index))}
-                                    className="text-red-500 hover:text-red-600"
+                                    className="text-neutral-400 hover:text-red-500 transition-colors"
                                   >
                                     <XMarkIcon className="w-5 h-5" />
                                   </button>
                                 </div>
                               ))}
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  value={newMotivation}
-                                  onChange={(e) => setNewMotivation(e.target.value)}
-                                  className="flex-grow px-3 py-2 border border-neutral-300 rounded-lg"
-                                  placeholder="输入新动机..."
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (newMotivation.trim()) {
-                                      setMotivations(prev => [...prev, newMotivation.trim()]);
-                                      setNewMotivation('');
-                                    }
-                                  }}
-                                  className="p-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
-                                >
-                                  <PlusIcon className="w-5 h-5" />
-                                </button>
-                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-2">
+                              <input
+                                type="text"
+                                value={newMotivation}
+                                onChange={(e) => setNewMotivation(e.target.value)}
+                                className="flex-grow px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary focus:border-primary"
+                                placeholder="输入新动机..."
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (newMotivation.trim()) {
+                                    setMotivations(prev => [...prev, newMotivation.trim()]);
+                                    setNewMotivation('');
+                                  }
+                                }}
+                                className="p-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                              >
+                                <PlusIcon className="w-5 h-5" />
+                              </button>
                             </div>
                           </div>
                         </div>
