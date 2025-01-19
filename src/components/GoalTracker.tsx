@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Goal, GoalType, Event } from '../types/goals';
 import { GoalList, AddGoalModal, EventForm } from './index';
-import { storage } from '../services/storage';
+import { getStorageService } from '../services/storage/index';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CommandPalette } from './CommandPalette';
 import { AISettings } from '@/types/command';
 import { createPortal } from 'react-dom';
 import { Review } from '@/types/review';
 import { YearReview } from './YearReview';
+import { ReviewPeriod } from '@/types/review';
+import { Review as ReviewComponent } from './Review';
 
 // 添加 UUID 生成函数
 const generateId = (): string => {
@@ -17,15 +19,72 @@ const generateId = (): string => {
   return `${timestamp}-${randomStr}`;
 };
 
+// 添加一个空状态提示组件
+const EmptyGoalsAlert: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1001]" onClick={onClose}>
+      <div 
+        className="bg-white rounded-lg p-6 max-w-md w-full mx-4 transform transition-all"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="text-center">
+          {/* 图标 */}
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+            <svg
+              className="h-6 w-6 text-yellow-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          
+          {/* 标题 */}
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            暂无目标数据
+          </h3>
+          
+          {/* 描述 */}
+          <div className="mt-2 px-2">
+            <p className="text-sm text-gray-500">
+              看起来你还没有创建任何目标。先添加一些目标，然后再来生成回顾报告吧！
+            </p>
+          </div>
+          
+          {/* 按钮 */}
+          <div className="mt-5">
+            <button
+              type="button"
+              className="inline-flex justify-center rounded-md border border-transparent bg-[#4ECDC4] px-4 py-2 text-sm font-medium text-white hover:bg-[#45b8b0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4ECDC4] focus-visible:ring-offset-2"
+              onClick={onClose}
+            >
+              我知道了
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 export const GoalTracker: React.FC = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedGoalType, setSelectedGoalType] = useState<GoalType | null>(null);
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [editingGoal, setEditingGoal] = useState<Goal | undefined>();
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | Date | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | undefined>();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [aiSettings, setAISettings] = useState<AISettings>({
     openApiKey: '',
@@ -35,6 +94,10 @@ export const GoalTracker: React.FC = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [currentReview, setCurrentReview] = useState<Review | undefined>();
+  const [reviewType, setReviewType] = useState<ReviewPeriod | null>(null);
+  const [showEmptyGoalsAlert, setShowEmptyGoalsAlert] = useState(false);
+
+  const storage = useMemo(() => getStorageService(), []);
 
   // 在客户端挂载后设置 isMounted
   useEffect(() => {
@@ -52,7 +115,7 @@ export const GoalTracker: React.FC = () => {
       }
     };
     loadGoals();
-  }, []);
+  }, [storage]);
 
   // 加载设置
   useEffect(() => {
@@ -65,7 +128,7 @@ export const GoalTracker: React.FC = () => {
       }
     };
     loadSettings();
-  }, []);
+  }, [storage]);
 
   // 处理全局快捷键
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -103,13 +166,17 @@ export const GoalTracker: React.FC = () => {
   };
 
   // 处理数据导入
-  const handleImport = (importedGoals: Goal[]) => {
-    setGoals(importedGoals);
-    storage.saveGoals(importedGoals);
+  const handleImport = async (importedGoals: Goal[]) => {
+    try {
+      await Promise.all(importedGoals.map(goal => storage.saveGoal(goal)));
+      setGoals(importedGoals);
+    } catch (error) {
+      console.error('Failed to import goals:', error);
+    }
   };
 
   // 优化事件处理函数，防止冒泡
-  const handleEventModalOpen = useCallback((goalId: string, date: Date, e?: React.MouseEvent) => {
+  const handleEventModalOpen = useCallback((goalId: string, date: string | Date, e?: React.MouseEvent) => {
     e?.stopPropagation(); // 阻止事件冒泡
     setSelectedGoalId(goalId);
     setSelectedDate(date);
@@ -117,17 +184,15 @@ export const GoalTracker: React.FC = () => {
   }, []);
 
   // 优化添加目标点击事件
-  const handleAddGoalClick = useCallback((type: GoalType, e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handleAddGoalClick = useCallback((type: GoalType) => {
     setSelectedGoalType(type);
     setIsAddModalOpen(true);
   }, []);
 
   // 优化编辑目标事件
-  const handleEditGoal = useCallback((goal: Goal, e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handleEditGoal = useCallback((goal: Goal) => {
     setEditingGoal(goal);
-    setSelectedGoalType(goal.type);
+    setSelectedGoalType(goal.type as GoalType);
     setIsAddModalOpen(true);
   }, []);
 
@@ -158,7 +223,7 @@ export const GoalTracker: React.FC = () => {
       
       setIsAddModalOpen(false);
       setSelectedGoalType(null);
-      setEditingGoal(null);
+      setEditingGoal(undefined);
     } catch (error) {
       console.error('Failed to save goal:', error);
     }
@@ -199,7 +264,7 @@ export const GoalTracker: React.FC = () => {
       setIsEventModalOpen(false);
       setSelectedGoalId(null);
       setSelectedDate(null);
-      setEditingEvent(null);
+      setEditingEvent(undefined);
     } catch (error) {
       console.error('Failed to save event:', error);
     }
@@ -251,14 +316,14 @@ export const GoalTracker: React.FC = () => {
   const handleModalClose = useCallback(() => {
     setIsAddModalOpen(false);
     setSelectedGoalType(null);
-    setEditingGoal(null);
+    setEditingGoal(undefined);
   }, []);
 
   const handleEventModalClose = useCallback(() => {
     setIsEventModalOpen(false);
     setSelectedGoalId(null);
     setSelectedDate(null);
-    setEditingEvent(null);
+    setEditingEvent(undefined);
   }, []);
 
   const handleCommandPaletteClose = useCallback(() => {
@@ -295,24 +360,89 @@ export const GoalTracker: React.FC = () => {
     try {
       // 先检查 AI 设置
       if (!aiSettings.openApiKey || !aiSettings.baseUrl || !aiSettings.modelName) {
-        setIsCommandPaletteOpen(true);  // 打开命令面板
+        setIsCommandPaletteOpen(true);
         return;
       }
 
       // 检查是否有目标数据
       if (goals.length === 0) {
-        // 可以添加一个提示组件来显示这个错误
         console.error('没有可用的目标数据');
         return;
       }
 
-      const existingReview = await storage.getReview(currentYear);
+      const existingReview = await storage.getReview('year', currentYear);
       setCurrentReview(existingReview || undefined);
       setIsReviewOpen(true);
     } catch (error) {
       console.error('Failed to load review:', error);
     }
-  }, [goals, aiSettings]);
+  }, [goals, aiSettings, storage]);
+
+  const handleReview = useCallback(async (period: ReviewPeriod) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const quarter = Math.floor(month / 3);
+
+    try {
+      if (!aiSettings.openApiKey || !aiSettings.baseUrl || !aiSettings.modelName) {
+        setIsCommandPaletteOpen(true);
+        return;
+      }
+
+      if (goals.length === 0) {
+        setShowEmptyGoalsAlert(true);
+        return;
+      }
+
+      let existingReview: Review | null = null;
+      switch (period) {
+        case 'month':
+          existingReview = await storage.getReview(period, year, month);
+          break;
+        case 'quarter':
+          existingReview = await storage.getReview(period, year, undefined, quarter);
+          break;
+        case 'year':
+          existingReview = await storage.getReview(period, year);
+          break;
+      }
+
+      // 重置所有状态
+      setIsReviewOpen(false);
+      setReviewType(null);
+      setCurrentReview(undefined);
+
+      // 根据回顾类型设置相应的状态
+      if (period === 'year') {
+        setIsReviewOpen(true);
+      } else {
+        setReviewType(period);
+      }
+      setCurrentReview(existingReview || undefined);
+    } catch (error) {
+      console.error('Failed to load review:', error);
+    }
+  }, [goals, aiSettings, storage]);
+
+  // 统一处理回顾按钮的样式
+  const reviewButtonClass = "px-4 py-2 rounded-full border border-neutral-200 hover:border-[#4ECDC4] hover:text-[#4ECDC4] transition-all duration-300";
+
+  // 获取当前时间段的标签
+  const getCurrentPeriodLabel = useCallback((period: ReviewPeriod) => {
+    const now = new Date();
+    const month = now.getMonth();
+    const quarter = Math.floor(month / 3) + 1;
+    
+    switch (period) {
+      case 'month':
+        return `${month + 1}月`;
+      case 'quarter':
+        return `Q${quarter}`;
+      case 'year':
+        return `${now.getFullYear()}`;
+    }
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 mt-1">
@@ -352,16 +482,28 @@ export const GoalTracker: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.6 }}
-          className="flex items-center gap-2 text-sm text-neutral-500 mt-6"
+          className="flex items-center gap-4 text-sm text-neutral-500 mt-6 justify-center"
         >
           <button 
-            className="px-4 py-2 rounded-full border border-neutral-200 hover:border-[#4ECDC4] hover:text-[#4ECDC4] transition-all duration-300"
-            onClick={handleYearReview}
+            className={reviewButtonClass}
+            onClick={() => handleReview('month')}
           >
-            年度回顾
+            {getCurrentPeriodLabel('month')}月度回顾
           </button>
           <button 
-            className="px-4 py-2 rounded-full border border-neutral-200 hover:border-[#FF6B6B] hover:text-[#FF6B6B] transition-all duration-300"
+            className={reviewButtonClass}
+            onClick={() => handleReview('quarter')}
+          >
+            {getCurrentPeriodLabel('quarter')}季度回顾
+          </button>
+          <button 
+            className={reviewButtonClass}
+            onClick={() => handleReview('year')}
+          >
+            {getCurrentPeriodLabel('year')}年度回顾
+          </button>
+          <button 
+            className={`${reviewButtonClass} hover:border-[#FF6B6B] hover:text-[#FF6B6B]`}
             onClick={() => {/* 可以添加分享功能 */}}
           >
             分享我的目标
@@ -406,13 +548,18 @@ export const GoalTracker: React.FC = () => {
             />
           )}
 
-          {isEventModalOpen && selectedGoalId && (
+          {isEventModalOpen && selectedGoalId && selectedDate && (
             <EventForm
               goalId={selectedGoalId}
-              initialDate={editingEvent?.date || selectedDate!}
+              initialDate={selectedDate}
               event={editingEvent}
               onSubmit={handleAddEvent}
-              onClose={handleEventModalClose}
+              onClose={() => {
+                setIsEventModalOpen(false);
+                setSelectedGoalId(null);
+                setSelectedDate(null);
+                setEditingEvent(undefined);
+              }}
             />
           )}
 
@@ -427,12 +574,37 @@ export const GoalTracker: React.FC = () => {
             onSearch={handleGoalSearch}
           />
 
+          {/* 年度回顾 */}
           <YearReview
             isOpen={isReviewOpen}
-            onClose={() => setIsReviewOpen(false)}
+            onClose={() => {
+              setIsReviewOpen(false);
+              setCurrentReview(undefined);
+            }}
             goals={goals}
             aiSettings={aiSettings}
             existingReview={currentReview}
+          />
+
+          {/* 月度和季度回顾 */}
+          {reviewType && (
+            <ReviewComponent
+              isOpen={!!reviewType}
+              onClose={() => {
+                setReviewType(null);
+                setCurrentReview(undefined);
+              }}
+              goals={goals}
+              aiSettings={aiSettings}
+              period={reviewType}
+              existingReview={currentReview}
+            />
+          )}
+
+          {/* 添加空状态提示组件 */}
+          <EmptyGoalsAlert 
+            isOpen={showEmptyGoalsAlert} 
+            onClose={() => setShowEmptyGoalsAlert(false)} 
           />
         </>
       )}

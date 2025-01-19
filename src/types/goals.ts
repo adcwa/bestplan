@@ -9,16 +9,16 @@ export interface Trigger {
 
 export interface Event {
   id: string;
-  date: Date;
   content: string;
+  date: string | Date;
   isCompleted: boolean;
   note?: string;
 }
 
 export interface GoalHistory {
   id: string;
-  date: Date;
   type: 'create' | 'update';
+  date: string | Date;
   changes: {
     field: string;
     oldValue: any;
@@ -26,21 +26,26 @@ export interface GoalHistory {
   }[];
 }
 
+export interface History {
+  date: Date;
+  value: number;
+  note?: string;
+}
+
 export interface Goal {
   id: string;
   type: GoalType;
   title: string;
-  startDate: Date;
-  deadline: Date;
-  frequency?: string;
-  domains: GoalDomain[];
-  motivations: string[];
-  nextSteps: string[];
-  rewards: string[];
-  triggers: Trigger[];
+  description: string;
+  startDate: string | Date;
+  deadline: string | Date;
+  lastModified: string | Date;
+  frequency: string;
+  status: string;
+  progress: number;
   events: Event[];
   history: GoalHistory[];
-  lastModified: Date;
+  nextSteps: string[];
   nextStepStatus: Record<string, boolean>;
 }
 

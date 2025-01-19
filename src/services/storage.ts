@@ -1,6 +1,7 @@
 import { Goal } from '@/types/goals';
 import { AISettings } from '@/types/command';
-import { Review } from '@/types/review';
+import { Review, ReviewPeriod } from '@/types/review';
+import { getStorageService } from './storage/index';
 
 export interface StorageService {
   getGoals: () => Promise<Goal[]>;
@@ -9,7 +10,7 @@ export interface StorageService {
   saveGoals: (goals: Goal[]) => Promise<void>;
   getSettings: () => Promise<AISettings>;
   saveSettings: (settings: AISettings) => Promise<void>;
-  getReview: (year: number) => Promise<Review | null>;
+  getReview: (period: ReviewPeriod, year: number, month?: number, quarter?: number) => Promise<Review | null>;
   saveReview: (review: Review) => Promise<void>;
 }
 
@@ -86,9 +87,9 @@ class LocalStorageService implements StorageService {
     }
   }
 
-  async getReview(year: number): Promise<Review | null> {
+  async getReview(period: ReviewPeriod, year: number, month?: number, quarter?: number): Promise<Review | null> {
     try {
-      const review = localStorage.getItem(`review-${year}`);
+      const review = localStorage.getItem(`review-${period}-${year}-${month}-${quarter}`);
       return review ? JSON.parse(review) : null;
     } catch (error) {
       console.error('Failed to get review:', error);
@@ -98,7 +99,7 @@ class LocalStorageService implements StorageService {
 
   async saveReview(review: Review): Promise<void> {
     try {
-      localStorage.setItem(`review-${review.year}`, JSON.stringify(review));
+      localStorage.setItem(`review-${review.period}-${review.year}-${review.month}-${review.quarter}`, JSON.stringify(review));
     } catch (error) {
       console.error('Failed to save review:', error);
       throw error;
@@ -227,12 +228,13 @@ class IndexedDBService implements StorageService {
     });
   }
 
-  async getReview(year: number): Promise<Review | null> {
+  async getReview(period: ReviewPeriod, year: number, month?: number, quarter?: number): Promise<Review | null> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['reviews'], 'readonly');
       const store = transaction.objectStore('reviews');
-      const request = store.get(year.toString());
+      const key = this.generateReviewKey(period, year, month, quarter);
+      const request = store.get(key);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result || null);
@@ -244,12 +246,24 @@ class IndexedDBService implements StorageService {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['reviews'], 'readwrite');
       const store = transaction.objectStore('reviews');
-      const request = store.put(review);
+      const key = this.generateReviewKey(review.period, review.year, review.month, review.quarter);
+      const request = store.put({ ...review, id: key });
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve();
     });
   }
+
+  private generateReviewKey(period: ReviewPeriod, year: number, month?: number, quarter?: number): string {
+    switch (period) {
+      case 'month':
+        return `${period}-${year}-${month}`;
+      case 'quarter':
+        return `${period}-${year}-${quarter}`;
+      case 'year':
+        return `${period}-${year}`;
+    }
+  }
 }
 
-export const storage = new IndexedDBService(); 
+export const storage = getStorageService(); 

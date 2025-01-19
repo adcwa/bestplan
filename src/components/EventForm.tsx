@@ -6,7 +6,7 @@ import type { Event } from '@/types/goals';
 
 interface Props {
   goalId: string;
-  initialDate: Date;
+  initialDate: string | Date;
   event?: Event;  // 新增，用于编辑模式
   onSubmit: (goalId: string, event: Omit<Event, 'id'>) => void;
   onClose: () => void;  // 简化为无参数函数

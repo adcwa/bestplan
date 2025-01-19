@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Review } from '@/types/review';
+import { Review as ReviewType, ReviewPeriod } from '@/types/review';
 import { Goal } from '@/types/goals';
 import { AISettings } from '@/types/command';
 import ReactMarkdown from 'react-markdown';
@@ -16,12 +16,56 @@ interface Props {
   onClose: () => void;
   goals: Goal[];
   aiSettings: AISettings;
-  existingReview?: Review;
+  period: ReviewPeriod;
+  existingReview?: ReviewType;
 }
 
-const REVIEW_PROMPT = `请根据以下目标数据生成一份详尽的年度回顾报告。报告应包含：
+const PROMPTS: Record<ReviewPeriod, string> = {
+  month: `请根据以下目标数据生成一份详尽的月度回顾报告。报告应包含：
 
-1. 总体成就概述
+1. 本月目标完成情况
+   - 使用 Markdown 表格展示目标完成率
+   - 重要进展和里程碑
+   - 成长亮点
+
+2. 习惯养成情况
+   - 使用 Markdown 表格展示习惯坚持情况
+   - 习惯对生活的影响
+
+3. 数据统计和分析
+   - 使用 Markdown 表格展示关键数据
+   - 特别成功的领域
+   - 需要改进的领域
+
+4. 下月改进建议
+   - 基于本月表现的具体建议
+   - 需要继续的目标
+   - 新的发展方向`,
+
+  quarter: `请根据以下目标数据生成一份详尽的季度回顾报告。报告应包含：
+
+1. 本季度目标达成情况
+   - 使用 Markdown 表格展示目标完成率
+   - 重要进展和里程碑
+   - 成长亮点
+
+2. 各领域进展分析
+   - 使用 Markdown 表格展示各领域进展
+   - 特别成功的领域
+   - 需要改进的领域
+
+3. 习惯养成趋势
+   - 使用 Markdown 表格展示习惯坚持情况
+   - 习惯对生活的影响
+
+4. 下季度规划建议
+   - 基于本季度表现的具体建议
+   - 需要继续的目标
+   - 新的发展方向`,
+
+  year: `请根据以下目标数据生成一份详尽的年度回顾报告。报告应包含：
+
+1. 年度目标完成概览
    - 使用 Markdown 表格展示目标完成率
    - 重要里程碑
    - 成长亮点
@@ -35,34 +79,71 @@ const REVIEW_PROMPT = `请根据以下目标数据生成一份详尽的年度回
    - 使用 Markdown 表格展示习惯坚持情况
    - 习惯对生活的影响
 
-4. 明年规划建议
+4. 来年发展规划
    - 基于今年表现的具体建议
    - 需要继续的目标
-   - 新的发展方向`;
+   - 新的发展方向`
+};
 
-export const YearReview: React.FC<Props> = ({
+const PERIOD_LABELS: Record<ReviewPeriod, string> = {
+  month: '月度',
+  quarter: '季度',
+  year: '年度'
+};
+
+export const Review: React.FC<Props> = ({
   isOpen,
   onClose,
   goals,
   aiSettings,
+  period,
   existingReview
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [review, setReview] = useState<Review | undefined>(existingReview);
+  const [review, setReview] = useState<ReviewType | undefined>(existingReview);
   const [error, setError] = useState<string | null>(null);
   const [generationStep, setGenerationStep] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
       setReview(existingReview);
-      setError(null);  // 清除之前的错误信息
+      setError(null);
     }
   }, [isOpen, existingReview]);
 
   useEffect(() => {
-    // 当 existingReview 改变时，更新 review 状态
     setReview(existingReview);
   }, [existingReview]);
+
+  const getTimeRangeGoals = useCallback(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (period) {
+      case 'month':
+        startDate = new Date(year, month, 1);
+        endDate = new Date(year, month + 1, 0);
+        break;
+      case 'quarter':
+        const quarter = Math.floor(month / 3);
+        startDate = new Date(year, quarter * 3, 1);
+        endDate = new Date(year, (quarter + 1) * 3, 0);
+        break;
+      case 'year':
+        startDate = new Date(year, 0, 1);
+        endDate = new Date(year, 11, 31);
+        break;
+    }
+
+    return goals.filter(goal => {
+      const goalDate = new Date(goal.startDate);
+      return goalDate >= startDate && goalDate <= endDate;
+    });
+  }, [goals, period]);
 
   const generateReview = useCallback(async () => {
     if (!aiSettings.openApiKey || !aiSettings.baseUrl || !aiSettings.modelName) {
@@ -75,20 +156,9 @@ export const YearReview: React.FC<Props> = ({
     setGenerationStep('准备数据...');
 
     try {
-      setGenerationStep('分析目标数据...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const currentYear = new Date().getFullYear();
-      const yearStart = new Date(currentYear, 0, 1);
-      const yearEnd = new Date(currentYear, 11, 31);
-      
-      const yearGoals = goals.filter(goal => {
-        const goalDate = new Date(goal.startDate);
-        return goalDate >= yearStart && goalDate <= yearEnd;
-      });
-
-      if (yearGoals.length === 0) {
-        throw new Error('当年没有设置任何目标');
+      const periodGoals = getTimeRangeGoals();
+      if (periodGoals.length === 0) {
+        throw new Error(`当前${PERIOD_LABELS[period]}没有设置任何目标`);
       }
 
       setGenerationStep('生成报告中...');
@@ -107,7 +177,7 @@ export const YearReview: React.FC<Props> = ({
             },
             {
               role: 'user',
-              content: `${REVIEW_PROMPT}\n\n目标数据：${JSON.stringify(yearGoals, null, 2)}`
+              content: `${PROMPTS[period]}\n\n目标数据：${JSON.stringify(periodGoals, null, 2)}`
             }
           ]
         })
@@ -125,15 +195,20 @@ export const YearReview: React.FC<Props> = ({
       }
 
       const content = data.choices[0].message.content;
+      const now = new Date();
+      const month = now.getMonth();
+      const quarter = Math.floor(month / 3);
 
       setGenerationStep('保存报告...');
-      const newReview: Review = {
+      const newReview: ReviewType = {
         id: Date.now().toString(),
-        period: 'year',
-        year: currentYear,
+        period,
+        year: now.getFullYear(),
+        month: period === 'month' ? month : undefined,
+        quarter: period === 'quarter' ? quarter : undefined,
         content,
-        generatedAt: new Date(),
-        goals: yearGoals
+        generatedAt: now,
+        goals: periodGoals
       };
 
       await storage.saveReview(newReview);
@@ -148,7 +223,7 @@ export const YearReview: React.FC<Props> = ({
       setIsLoading(false);
       setGenerationStep('');
     }
-  }, [goals, aiSettings]);
+  }, [goals, aiSettings, period]);
 
   return (
     <Transition.Root show={isOpen} as={Fragment}>
@@ -180,7 +255,7 @@ export const YearReview: React.FC<Props> = ({
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <Dialog.Title as="h3" className="text-2xl font-semibold text-neutral-900">
-                      {new Date().getFullYear()} 年度回顾
+                      {PERIOD_LABELS[period]}回顾
                     </Dialog.Title>
                     <div className="flex items-center gap-4">
                       {review && (
@@ -248,7 +323,7 @@ export const YearReview: React.FC<Props> = ({
                           className="text-center py-12 space-y-4"
                         >
                           <DocumentTextIcon className="w-16 h-16 text-neutral-300 mx-auto" />
-                          <p className="text-neutral-500">点击生成按钮开始生成年度回顾</p>
+                          <p className="text-neutral-500">点击生成按钮开始生成{PERIOD_LABELS[period]}回顾</p>
                         </motion.div>
                       )}
                     </AnimatePresence>
