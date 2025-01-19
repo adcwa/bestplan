@@ -12,12 +12,12 @@ class GoalTrackerDB extends Dexie {
   constructor() {
     super('GoalTrackerDB');
     
-    // 删除旧的数据库
-    Dexie.delete('GoalTrackerDB').then(() => {
-      console.log('Database successfully deleted');
-    }).catch((err) => {
-      console.error('Could not delete database:', err);
-    });
+    // // 删除旧的数据库
+    // Dexie.delete('GoalTrackerDB').then(() => {
+    //   console.log('Database successfully deleted');
+    // }).catch((err) => {
+    //   console.error('Could not delete database:', err);
+    // });
 
     // 创建新的数据库结构
     this.version(1).stores({

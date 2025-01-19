@@ -24,6 +24,7 @@ const getSteps = (type: GoalType) => [
   { id: 'time', title: '时间规划', required: true },
   { id: 'motivation', title: '动机计划', required: false },
   { id: 'action', title: '下一步行动', required: false },
+  { id: 'reward', title: '奖励设置', required: false },
   { id: 'trigger', title: '触发器设置', required: false }
 ].map(step => ({
   ...step,
@@ -41,8 +42,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
   const [newMotivation, setNewMotivation] = useState('');
   const [nextSteps, setNextSteps] = useState<string[]>([]);
   const [newStep, setNewStep] = useState('');
-  const [rewards, setRewards] = useState<string[]>([]);
-  const [newReward, setNewReward] = useState('');
+  const [rewardDescription, setRewardDescription] = useState(goal?.reward?.description || '');
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [newTriggerWhen, setNewTriggerWhen] = useState('');
   const [newTriggerThen, setNewTriggerThen] = useState('');
@@ -64,15 +64,17 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
   useEffect(() => {
     if (goal) {
       setTitle(goal.title);
-      setStartDate(goal.startDate.toISOString().split('T')[0]);
-      setDeadline(goal.deadline.toISOString().split('T')[0]);
+      setStartDate(goal.startDate instanceof Date ? goal.startDate.toISOString().split('T')[0] : goal.startDate);
+      setDeadline(goal.deadline instanceof Date ? goal.deadline.toISOString().split('T')[0] : goal.deadline);
       setFrequency(goal.frequency);
       setSelectedDomains(goal.domains);
       setMotivations(goal.motivations);
       setNextSteps(goal.nextSteps);
-      setRewards(goal.rewards);
       setTriggers(goal.triggers);
       setLocalNextStepStatus(goal.nextStepStatus || {});
+      if (goal.reward) {
+        setRewardDescription(goal.reward.description);
+      }
     }
   }, [goal]);
 
@@ -145,18 +147,27 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
       id: goal?.id || Date.now().toString(),
       type,
       title,
+      description: '',
       startDate: new Date(startDate),
       deadline: new Date(deadline),
-      frequency: type === 'habit' ? frequency : undefined, // 只在习惯型目标中设置频率
+      frequency: type === 'habit' ? frequency : '',
+      status: 'active',
+      progress: 0,
       domains: selectedDomains,
       motivations,
       nextSteps,
       nextStepStatus: localNextStepStatus,
-      rewards,
+      reward: rewardDescription ? {
+        description: rewardDescription,
+        isAchieved: false
+      } : {
+        description: '',
+        isAchieved: false
+      },
       triggers,
       events: goal?.events || [],
       history: [...(goal?.history || []), historyEntry],
-      lastModified: now
+      lastModified: new Date()
     };
 
     onSubmit(updatedGoal);
@@ -210,6 +221,8 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
         return true; // 非必填步骤，始终返回 true
       case 'action':
         return true; // 非必填步骤，始终返回 true
+      case 'reward':
+        return rewardDescription.trim() !== '';
       case 'trigger':
         return true; // 非必填步骤，始终返回 true
       default:
@@ -324,7 +337,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
                       {/* 步骤导航容器 */}
                       <div 
                         ref={stepsContainerRef}
-                        className="flex items-center justify-between overflow-x-auto scrollbar-none scroll-smooth px-6 gap-16"
+                        className="flex items-center justify-between overflow-x-auto scrollbar-none scroll-smooth px-6 gap-8"
                       >
                         {steps.map((step, index) => (
                           <button
@@ -377,7 +390,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
                               </div>
                               {index < steps.length - 1 && (
                                 <div className={`
-                                  absolute top-[14px] left-[32px] w-[64px] h-[2px]
+                                  absolute top-[14px] left-[32px] w-[40px] h-[2px]
                                   ${index < currentStep ? 'bg-neutral-900' : 'bg-neutral-200'}
                                 `} />
                               )}
@@ -540,6 +553,32 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
                       )}
 
                       {currentStep === 4 && (
+                        <div className="space-y-6">
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                              设置目标奖励
+                            </label>
+                            <div className="space-y-4">
+                              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800 text-sm">
+                                <p>设置一个有意义的奖励可以增加达成目标的动力。奖励应该：</p>
+                                <ul className="list-disc ml-4 mt-2 space-y-1">
+                                  <li>与目标的难度相匹配</li>
+                                  <li>对你来说有足够的吸引力</li>
+                                  <li>不会对目标本身产生负面影响</li>
+                                </ul>
+                              </div>
+                              <textarea
+                                value={rewardDescription}
+                                onChange={(e) => setRewardDescription(e.target.value)}
+                                placeholder="描述达成目标后给予自己的奖励..."
+                                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary focus:border-primary min-h-[100px]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {currentStep === 5 && (
                         <div className="space-y-6">
                           <div>
                             <label className="block text-sm font-medium text-neutral-700 mb-2">

@@ -175,6 +175,28 @@ const GoalCard = ({
             </div>
           )}
 
+          {/* 奖励信息 */}
+          {goal.reward && (
+            <div className="p-4 bg-white rounded-lg border border-neutral-200 mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-neutral-900">目标奖励</h4>
+                {goal.reward.isAchieved && (
+                  <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                    已获得
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-neutral-600">
+                {goal.reward.description}
+              </div>
+              {goal.reward.isAchieved && goal.reward.achievedAt && (
+                <div className="mt-2 text-xs text-neutral-500">
+                  获得时间：{formatDate(goal.reward.achievedAt)}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 基本信息卡片 - 始终显示 */}
           <div className="space-y-4">
             <div className="p-4 bg-white rounded-xl shadow-sm">

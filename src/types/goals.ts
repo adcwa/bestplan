@@ -47,6 +47,14 @@ export interface Goal {
   history: GoalHistory[];
   nextSteps: string[];
   nextStepStatus: Record<string, boolean>;
+  reward: {
+    description: string;
+    isAchieved: boolean;
+    achievedAt?: string | Date;
+  };
+  domains: GoalDomain[];
+  motivations: string[];
+  triggers: Trigger[];
 }
 
 export interface HabitTracking {
