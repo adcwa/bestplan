@@ -7,7 +7,7 @@
     "distDir": "../out"
   },
   "package": {
-    "productName": "bestplan",
+    "productName": "BestPlan",
     "version": "0.1.0"
   },
   "tauri": {
@@ -82,7 +82,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "bestplan",
+        "title": "BestPlan",
         "width": 800
       }
     ]
