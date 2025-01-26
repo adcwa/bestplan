@@ -92,6 +92,19 @@ export const CommandPalette: React.FC<Props> = ({
   const [importData, setImportData] = useState<Goal[] | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        const searchInput = document.querySelector('[data-command-input]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }, 50);
+    } else {
+      setQuery('');
+    }
+  }, [isOpen]);
+
   const validateAISettings = () => {
     const missingFields: string[] = [];
     
@@ -451,6 +464,7 @@ export const CommandPalette: React.FC<Props> = ({
                           className="h-12 w-full border-0 bg-transparent pl-11 pr-4 text-neutral-900 placeholder:text-neutral-400 focus:ring-0 sm:text-sm"
                           placeholder="搜索命令..."
                           onChange={(event) => setQuery(event.target.value)}
+                          data-command-input
                         />
                       </div>
 
