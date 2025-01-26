@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #4ECDC4;
+    --primary-dark: #45b8b0;
+    --secondary: #FF6B6B;
+  }
+}
+
+body {
+  @apply bg-neutral-50 text-neutral-900;
+}
+
+/* 自定义滚动条样式 */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* 添加一些基础样式 */
+.prose {
+  @apply max-w-none;
+}
+
+.prose pre {
+  @apply bg-neutral-800 text-neutral-100;
+} 
