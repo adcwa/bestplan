@@ -4,14 +4,16 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { BasicInfo } from './AddGoalModal/BasicInfo';
 import { TimeSettings } from './AddGoalModal/TimeSettings';
-import { PlusIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Toast } from '@/components/ui/Toast';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface Props {
   type: GoalType;
   goal?: Goal;
   onClose: () => void;
   onSubmit: (goal: Goal) => void;
+  onDelete?: (goalId: string) => void;
 }
 
 const DOMAINS: GoalDomain[] = [
@@ -32,7 +34,7 @@ const getSteps = (type: GoalType) => [
   required: type === 'achievement' && step.id === 'time' ? false : step.required
 }));
 
-export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit }) => {
+export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit, onDelete }) => {
   const [title, setTitle] = useState('');
   const [startDate, setStartDate] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -60,6 +62,7 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
   const [canScrollRight, setCanScrollRight] = useState(false);
   const stepsContainerRef = useRef<HTMLDivElement>(null);
   const [localNextStepStatus, setLocalNextStepStatus] = useState<Record<string, boolean>>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (goal) {
@@ -272,6 +275,17 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
   // 根据目标类型获取步骤
   const steps = getSteps(type);
 
+  const handleDelete = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (goal && onDelete) {
+      onDelete(goal.id);
+      onClose();
+    }
+  };
+
   return (
     <>
       <Toast
@@ -307,12 +321,24 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
               >
                 <Dialog.Panel className="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
                   <div className="flex justify-between items-center mb-8">
-                    <Dialog.Title
-                      as="h3"
-                      className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
-                    >
-                      {goal ? '编辑目标' : `新增${type === 'achievement' ? '成就型' : '习惯型'}目标`}
-                    </Dialog.Title>
+                    <div className="flex items-center gap-4">
+                      <Dialog.Title
+                        as="h3"
+                        className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
+                      >
+                        {goal ? '编辑目标' : `新增${type === 'achievement' ? '成就型' : '习惯型'}目标`}
+                      </Dialog.Title>
+                      {goal && onDelete && (
+                        <button
+                          onClick={handleDelete}
+                          className="inline-flex items-center px-2 py-1 text-sm text-neutral-400 hover:text-white hover:bg-red-600 rounded-md transition-colors"
+                          title="删除目标"
+                        >
+                          <TrashIcon className="w-4 h-4 mr-1" />
+                          删除
+                        </button>
+                      )}
+                    </div>
                     <button
                       onClick={onClose}
                       className="p-1 rounded-full hover:bg-neutral-100"
@@ -693,6 +719,16 @@ export const AddGoalModal: React.FC<Props> = ({ type, goal, onClose, onSubmit })
           </div>
         </Dialog>
       </Transition>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="删除目标"
+        message="确定要删除这个目标吗？此操作无法撤销。"
+        goal={goal}
+        type="danger"
+      />
     </>
   );
 }; 

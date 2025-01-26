@@ -12,6 +12,7 @@ import { ReviewPeriod } from '@/types/review';
 import { Review as ReviewComponent } from './Review';
 import { Dialog, Transition } from '@headlessui/react';
 import { ShareIcon, DocumentDuplicateIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { GoalEditor } from './GoalEditor';
 
 // 添加 UUID 生成函数
 const generateId = (): string => {
@@ -220,6 +221,8 @@ export const GoalTracker: React.FC = () => {
   const [reviewType, setReviewType] = useState<ReviewPeriod | null>(null);
   const [showEmptyGoalsAlert, setShowEmptyGoalsAlert] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const storage = useMemo(() => getStorageService(), []);
 
@@ -568,6 +571,18 @@ export const GoalTracker: React.FC = () => {
     }
   }, []);
 
+  const handleDeleteGoal = async (goalId: string) => {
+    try {
+      await storage.deleteGoal(goalId);
+      setGoals(goals.filter(goal => goal.id !== goalId));
+      setSelectedGoal(null);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to delete goal:', error);
+      // 可以添加错误提示
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 mt-1">
       <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
@@ -672,6 +687,7 @@ export const GoalTracker: React.FC = () => {
               goal={editingGoal}
               onClose={handleModalClose}
               onSubmit={handleAddGoal}
+              onDelete={handleDeleteGoal}
             />
           )}
 
@@ -739,6 +755,21 @@ export const GoalTracker: React.FC = () => {
             onClose={() => setIsShareModalOpen(false)}
             goals={goals}
           />
+
+          {isEditing && selectedGoal && (
+            <Modal
+              isOpen={isEditing}
+              onClose={() => setIsEditing(false)}
+              title="编辑目标"
+            >
+              <GoalEditor
+                goal={selectedGoal}
+                onSave={handleAddGoal}
+                onDelete={handleDeleteGoal}
+                onClose={() => setIsEditing(false)}
+              />
+            </Modal>
+          )}
         </>
       )}
     </div>

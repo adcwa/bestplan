@@ -44,5 +44,25 @@ export class FileStorage implements StorageService {
     await this.writeFile(data);
   }
 
+  async deleteGoal(goalId: string): Promise<void> {
+    try {
+      const data = await this.readFile();
+      // 查找要删除的目标
+      const goalToDelete = data.goals.find((g: Goal) => g.id === goalId);
+      if (!goalToDelete) {
+        throw new Error('Goal not found');
+      }
+
+      // 从数组中移除目标
+      data.goals = data.goals.filter((g: Goal) => g.id !== goalId);
+
+      // 保存更新后的数据
+      await this.writeFile(data);
+    } catch (error) {
+      console.error('Failed to delete goal:', error);
+      throw error;
+    }
+  }
+
   // ... 其他代码保持不变 ...
 } 
