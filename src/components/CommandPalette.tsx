@@ -8,7 +8,8 @@ import {
   Cog6ToothIcon,
   SparklesIcon,
   ClipboardIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { Goal } from '@/types/goals';
 import ReactMarkdown from 'react-markdown';
@@ -30,6 +31,7 @@ interface Props {
   onExport: () => Promise<string>;
   onImport: (data: Goal[]) => void;
   onSearch: (goal: Goal) => void;
+  initialQuery?: string;
 }
 
 const commands: Command[] = [
@@ -78,7 +80,8 @@ export const CommandPalette: React.FC<Props> = ({
   onUpdateAISettings,
   onExport,
   onImport,
-  onSearch
+  onSearch,
+  initialQuery = ''
 }) => {
   const [query, setQuery] = useState('');
   const [selectedCommand, setSelectedCommand] = useState<CommandType | null>(null);
@@ -104,6 +107,16 @@ export const CommandPalette: React.FC<Props> = ({
       setQuery('');
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && initialQuery) {
+      setQuery(initialQuery);
+      const settingsCommand = commands.find(cmd => cmd.id === 'settings');
+      if (settingsCommand) {
+        setSelectedCommand('settings');
+      }
+    }
+  }, [isOpen, initialQuery]);
 
   const validateAISettings = () => {
     const missingFields: string[] = [];
@@ -418,6 +431,21 @@ export const CommandPalette: React.FC<Props> = ({
     ),
   };
 
+  const AISettingsAlert = () => (
+    <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 mb-4">
+      <div className="flex">
+        <div className="flex-shrink-0">
+          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" aria-hidden="true" />
+        </div>
+        <div className="ml-3">
+          <p className="text-sm text-yellow-700">
+            请先完成 AI 设置才能使用回顾功能。请在下方配置必要的 AI 参数。
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <Transition.Root show={isOpen} as={Fragment}>
@@ -565,6 +593,7 @@ export const CommandPalette: React.FC<Props> = ({
                       {selectedCommand === 'settings' && (
                         <div className="p-4 space-y-4">
                           <h3 className="text-lg font-medium text-neutral-900">AI 设置</h3>
+                          {initialQuery === '设置' && <AISettingsAlert />}
                           <div className="space-y-4">
                             {error && (
                               <div className="p-3 bg-red-50 border border-red-200 rounded-md">

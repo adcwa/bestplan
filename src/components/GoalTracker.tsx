@@ -224,6 +224,8 @@ export const GoalTracker: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [aiSettingsAlert, setAISettingsAlert] = useState(false);
+  const [initialCommandQuery, setInitialCommandQuery] = useState('');
 
   const storage = useMemo(() => getStorageService(), []);
 
@@ -513,8 +515,14 @@ export const GoalTracker: React.FC = () => {
     const quarter = Math.floor(month / 3);
 
     try {
+      // 检查 AI 设置
       if (!aiSettings.openApiKey || !aiSettings.baseUrl || !aiSettings.modelName) {
+        // 打开命令面板并自动定位到设置
         setIsCommandPaletteOpen(true);
+        // 通过 ref 传递初始查询
+        setInitialCommandQuery('设置');
+        // 显示友好提示
+        setAISettingsAlert(true);
         return;
       }
 
@@ -695,6 +703,7 @@ export const GoalTracker: React.FC = () => {
               onExport={handleExport}
               onImport={handleImport}
               onSearch={handleGoalSearch}
+              initialQuery={initialCommandQuery}
             />
 
             {/* 年度回顾 */}
