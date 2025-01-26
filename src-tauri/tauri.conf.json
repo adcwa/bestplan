@@ -12,7 +12,31 @@
   },
   "tauri": {
     "allowlist": {
-      "all": false
+      "all": false,
+      "dialog": {
+        "all": true,
+        "open": true,
+        "save": true
+      },
+      "fs": {
+        "all": true,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "createDir": true,
+        "scope": {
+          "allow": [
+            "$HOME/**",
+            "$HOME/.bestplan/**",
+            "$DOCUMENT/**",
+            "$DOWNLOAD/**",
+            "$DESKTOP/**"
+          ]
+        }
+      },
+      "path": {
+        "all": true
+      }
     },
     "bundle": {
       "active": true,
@@ -32,7 +56,7 @@
       "identifier": "com.bestplan.app",
       "longDescription": "",
       "macOS": {
-        "entitlements": null,
+        "entitlements": "build/entitlements.mac.plist",
         "exceptionDomain": "",
         "frameworks": [],
         "providerShortName": null,
