@@ -13,6 +13,7 @@ import { Review as ReviewComponent } from './Review';
 import { Dialog, Transition } from '@headlessui/react';
 import { ShareIcon, DocumentDuplicateIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { GoalEditor } from './GoalEditor';
+import { Header } from './Header';
 
 // 添加 UUID 生成函数
 const generateId = (): string => {
@@ -583,195 +584,175 @@ export const GoalTracker: React.FC = () => {
     }
   };
 
-  return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 mt-1">
-      <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative"
-        >
-          {/* 装饰性元素 */}
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-24 h-1 bg-gradient-to-r from-[#FF6B6B] to-[#4ECDC4] rounded-full opacity-75" />
-          
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#FF6B6B] to-[#4ECDC4]">
-              The Best Year
-            </span>
-            <br />
-            <span className="text-neutral-800 mt-2 block font-light">
-              of My Life
-            </span>
-          </h1>
+  const handleOpenCommandPalette = useCallback(() => {
+    setIsCommandPaletteOpen(true);
+  }, []);
 
-          {/* 激励性副标题 */}
-          <motion.p 
+  return (
+    <div className="min-h-screen bg-neutral-50">
+      <Header onOpenCommandPalette={handleOpenCommandPalette} />
+      
+      <div className="max-w-7xl mx-auto  space-y-6">
+        <div className="flex flex-col items-center justify-center  text-center space-y-4">
+         
+
+          {/* 互动元素 */}
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-            className="mt-4 text-neutral-600 text-lg max-w-md mx-auto"
+            transition={{ delay: 0.6, duration: 0.6 }}
+            className="flex items-center gap-4 text-sm text-neutral-500 mt-6 justify-center"
           >
-            每一个目标都是通向理想生活的阶梯
-          </motion.p>
-        </motion.div>
+            <button 
+              className={reviewButtonClass}
+              onClick={() => handleReview('month')}
+            >
+              {getCurrentPeriodLabel('month')}月度回顾
+            </button>
+            <button 
+              className={reviewButtonClass}
+              onClick={() => handleReview('quarter')}
+            >
+              {getCurrentPeriodLabel('quarter')}季度回顾
+            </button>
+            <button 
+              className={reviewButtonClass}
+              onClick={() => handleReview('year')}
+            >
+              {getCurrentPeriodLabel('year')}年度回顾
+            </button>
+            <button 
+              className={`${reviewButtonClass} hover:border-[#FF6B6B] hover:text-[#FF6B6B]`}
+              onClick={() => setIsShareModalOpen(true)}
+            >
+              <span className="flex items-center gap-2">
+                <ShareIcon className="w-4 h-4" />
+                分享我的目标
+              </span>
+            </button>
+          </motion.div>
+        </div>
 
-        {/* 互动元素 */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.6 }}
-          className="flex items-center gap-4 text-sm text-neutral-500 mt-6 justify-center"
-        >
-          <button 
-            className={reviewButtonClass}
-            onClick={() => handleReview('month')}
-          >
-            {getCurrentPeriodLabel('month')}月度回顾
-          </button>
-          <button 
-            className={reviewButtonClass}
-            onClick={() => handleReview('quarter')}
-          >
-            {getCurrentPeriodLabel('quarter')}季度回顾
-          </button>
-          <button 
-            className={reviewButtonClass}
-            onClick={() => handleReview('year')}
-          >
-            {getCurrentPeriodLabel('year')}年度回顾
-          </button>
-          <button 
-            className={`${reviewButtonClass} hover:border-[#FF6B6B] hover:text-[#FF6B6B]`}
-            onClick={() => setIsShareModalOpen(true)}
-          >
-            <span className="flex items-center gap-2">
-              <ShareIcon className="w-4 h-4" />
-              分享我的目标
-            </span>
-          </button>
-        </motion.div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8">
-        <GoalList 
-          title="成就型目标" 
-          goals={achievementGoals} 
-          type="achievement"
-          onAddEvent={handleEventModalOpen}
-          onEditGoal={handleEditGoal}
-          onDeleteEvent={handleDeleteEvent}
-          onAddGoal={handleAddGoalClick}
-          onEditEvent={handleEditEvent}
-          onUpdateNextSteps={handleUpdateNextSteps}
-        />
-        <GoalList 
-          title="习惯型目标" 
-          goals={habitGoals} 
-          type="habit"
-          onAddEvent={handleEventModalOpen}
-          onEditGoal={handleEditGoal}
-          onDeleteEvent={handleDeleteEvent}
-          onAddGoal={handleAddGoalClick}
-          onEditEvent={handleEditEvent}
-          onUpdateNextSteps={handleUpdateNextSteps}
-        />
-      </div>
-
-      {/* 只在客户端渲染模态框 */}
-      {isMounted && (
-        <>
-          {isAddModalOpen && selectedGoalType && (
-            <AddGoalModal
-              type={selectedGoalType}
-              goal={editingGoal}
-              onClose={handleModalClose}
-              onSubmit={handleAddGoal}
-              onDelete={handleDeleteGoal}
-            />
-          )}
-
-          {isEventModalOpen && selectedGoalId && selectedDate && (
-            <EventForm
-              goalId={selectedGoalId}
-              initialDate={selectedDate}
-              event={editingEvent}
-              onSubmit={handleAddEvent}
-              onClose={() => {
-                setIsEventModalOpen(false);
-                setSelectedGoalId(null);
-                setSelectedDate(null);
-                setEditingEvent(undefined);
-              }}
-            />
-          )}
-
-          <CommandPalette
-            isOpen={isCommandPaletteOpen}
-            onClose={handleCommandPaletteClose}
-            goals={goals}
-            aiSettings={aiSettings}
-            onUpdateAISettings={handleUpdateAISettings}
-            onExport={handleExport}
-            onImport={handleImport}
-            onSearch={handleGoalSearch}
+        <div className="grid grid-cols-1 gap-8">
+          <GoalList 
+            title="成就型目标" 
+            goals={achievementGoals} 
+            type="achievement"
+            onAddEvent={handleEventModalOpen}
+            onEditGoal={handleEditGoal}
+            onDeleteEvent={handleDeleteEvent}
+            onAddGoal={handleAddGoalClick}
+            onEditEvent={handleEditEvent}
+            onUpdateNextSteps={handleUpdateNextSteps}
           />
-
-          {/* 年度回顾 */}
-          <YearReview
-            isOpen={isReviewOpen}
-            onClose={() => {
-              setIsReviewOpen(false);
-              setCurrentReview(undefined);
-            }}
-            goals={goals}
-            aiSettings={aiSettings}
-            existingReview={currentReview}
+          <GoalList 
+            title="习惯型目标" 
+            goals={habitGoals} 
+            type="habit"
+            onAddEvent={handleEventModalOpen}
+            onEditGoal={handleEditGoal}
+            onDeleteEvent={handleDeleteEvent}
+            onAddGoal={handleAddGoalClick}
+            onEditEvent={handleEditEvent}
+            onUpdateNextSteps={handleUpdateNextSteps}
           />
+        </div>
 
-          {/* 月度和季度回顾 */}
-          {reviewType && (
-            <ReviewComponent
-              isOpen={!!reviewType}
+        {/* 只在客户端渲染模态框 */}
+        {isMounted && (
+          <>
+            {isAddModalOpen && selectedGoalType && (
+              <AddGoalModal
+                type={selectedGoalType}
+                goal={editingGoal}
+                onClose={handleModalClose}
+                onSubmit={handleAddGoal}
+                onDelete={handleDeleteGoal}
+              />
+            )}
+
+            {isEventModalOpen && selectedGoalId && selectedDate && (
+              <EventForm
+                goalId={selectedGoalId}
+                initialDate={selectedDate}
+                event={editingEvent}
+                onSubmit={handleAddEvent}
+                onClose={() => {
+                  setIsEventModalOpen(false);
+                  setSelectedGoalId(null);
+                  setSelectedDate(null);
+                  setEditingEvent(undefined);
+                }}
+              />
+            )}
+
+            <CommandPalette
+              isOpen={isCommandPaletteOpen}
+              onClose={handleCommandPaletteClose}
+              goals={goals}
+              aiSettings={aiSettings}
+              onUpdateAISettings={handleUpdateAISettings}
+              onExport={handleExport}
+              onImport={handleImport}
+              onSearch={handleGoalSearch}
+            />
+
+            {/* 年度回顾 */}
+            <YearReview
+              isOpen={isReviewOpen}
               onClose={() => {
-                setReviewType(null);
+                setIsReviewOpen(false);
                 setCurrentReview(undefined);
               }}
               goals={goals}
               aiSettings={aiSettings}
-              period={reviewType}
               existingReview={currentReview}
             />
-          )}
 
-          {/* 添加空状态提示组件 */}
-          <EmptyGoalsAlert 
-            isOpen={showEmptyGoalsAlert} 
-            onClose={() => setShowEmptyGoalsAlert(false)} 
-          />
-
-          <ShareGoalsModal
-            isOpen={isShareModalOpen}
-            onClose={() => setIsShareModalOpen(false)}
-            goals={goals}
-          />
-
-          {isEditing && selectedGoal && (
-            <Modal
-              isOpen={isEditing}
-              onClose={() => setIsEditing(false)}
-              title="编辑目标"
-            >
-              <GoalEditor
-                goal={selectedGoal}
-                onSave={handleAddGoal}
-                onDelete={handleDeleteGoal}
-                onClose={() => setIsEditing(false)}
+            {/* 月度和季度回顾 */}
+            {reviewType && (
+              <ReviewComponent
+                isOpen={!!reviewType}
+                onClose={() => {
+                  setReviewType(null);
+                  setCurrentReview(undefined);
+                }}
+                goals={goals}
+                aiSettings={aiSettings}
+                period={reviewType}
+                existingReview={currentReview}
               />
-            </Modal>
-          )}
-        </>
-      )}
+            )}
+
+            {/* 添加空状态提示组件 */}
+            <EmptyGoalsAlert 
+              isOpen={showEmptyGoalsAlert} 
+              onClose={() => setShowEmptyGoalsAlert(false)} 
+            />
+
+            <ShareGoalsModal
+              isOpen={isShareModalOpen}
+              onClose={() => setIsShareModalOpen(false)}
+              goals={goals}
+            />
+
+            {isEditing && selectedGoal && (
+              <Modal
+                isOpen={isEditing}
+                onClose={() => setIsEditing(false)}
+                title="编辑目标"
+              >
+                <GoalEditor
+                  goal={selectedGoal}
+                  onSave={handleAddGoal}
+                  onDelete={handleDeleteGoal}
+                  onClose={() => setIsEditing(false)}
+                />
+              </Modal>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };

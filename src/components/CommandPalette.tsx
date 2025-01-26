@@ -38,35 +38,35 @@ const commands: Command[] = [
     title: '导出数据',
     description: '将所有目标数据导出为 JSON 文件',
     icon: ArrowDownTrayIcon,
-    shortcut: ['⌘', 'E']
+   // shortcut: ['⌘', 'E']
   },
   {
     id: 'import',
     title: '导入数据',
     description: '从 JSON 文件导入目标数据',
     icon: ArrowUpTrayIcon,
-    shortcut: ['⌘', 'I']
+    //shortcut: ['⌘', 'I']
   },
   {
     id: 'search',
     title: '搜索目标',
     description: '快速查找和跳转到目标',
     icon: MagnifyingGlassIcon,
-    shortcut: ['⌘', 'F']
+   // shortcut: ['⌘', 'F']
   },
   {
     id: 'settings',
     title: '设置',
     description: '配置 AI 设置和其他选项',
     icon: Cog6ToothIcon,
-    shortcut: ['⌘', ',']
+   // shortcut: ['⌘', ',']
   },
   {
     id: 'ai-prompt',
     title: 'AI 助手',
     description: '使用 AI 分析目标并获取建议',
     icon: SparklesIcon,
-    shortcut: ['⌘', 'P']
+   // shortcut: ['⌘', 'P']
   }
 ];
 
