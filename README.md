@@ -236,3 +236,23 @@ npm run build-desktop
 3. 等待 Tauri 移动端支持（目前在开发中）
 
 您想从哪个部分开始实施？我可以帮您详细展开任何部分的具体实现。
+
+
+
+
+vim /etc/nginx/conf.d/default.conf
+
+npm run build 
+mkdir -p /var/www/bestplan
+mv ./out/*  /var/www/bestplan
+
+
+
+- 增加登录和退出功能功能，使用supabase的auth 登录，支持两种登录模式
+1. google登录
+2. 邮箱登录
+- 登录后支持个人信息修改和展示
+- 使用supabase 的数据库，存储数据，存储的数据包括，数据的修改实时同步到数据库中
+1. 与账号相关的所有任务相关的数据
+2. 个人信息
+3. 设置信息
