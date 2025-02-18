@@ -10,6 +10,15 @@ const defaultSettings: AISettings = {
   modelName: 'deepseek-chat'
 };
 
+import { R2Storage } from './R2Storage';
+
+const r2Config = {
+  accountId: process.env.NEXT_PUBLIC_R2_ACCOUNT_ID || '',
+  accessKeyId: process.env.NEXT_PUBLIC_R2_ACCESS_KEY_ID || '',
+  secretAccessKey: process.env.NEXT_PUBLIC_R2_SECRET_ACCESS_KEY || '',
+  bucketName: process.env.NEXT_PUBLIC_R2_BUCKET_NAME || ''
+};
+
 export function getStorageService(): StorageService {
   if (typeof window === 'undefined') {
     // 服务器端返回一个空的实现
@@ -30,7 +39,17 @@ export function getStorageService(): StorageService {
 
   try {
     if (!storageInstance) {
-      storageInstance = new IndexedDBStorage();
+      // 如果配置了 R2，则使用 R2Storage
+      if (r2Config.accountId && r2Config.accessKeyId && r2Config.secretAccessKey && r2Config.bucketName) {
+        storageInstance = new R2Storage(
+          r2Config.accountId,
+          r2Config.accessKeyId,
+          r2Config.secretAccessKey,
+          r2Config.bucketName
+        );
+      } else {
+        storageInstance = new IndexedDBStorage();
+      }
     }
     return storageInstance;
   } catch (error) {
@@ -74,4 +93,4 @@ export function getStorageService(): StorageService {
       saveReview: async () => {},
     };
   }
-} 
+}
