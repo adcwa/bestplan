@@ -5,6 +5,9 @@ const nextConfig = {
     unoptimized: true,
   },
   // 禁用服务器端特性
+  experimental: {
+    appDir: true,
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
