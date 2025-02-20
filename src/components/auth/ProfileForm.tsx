@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import type { UserProfile } from '@/types/user'
+import { useRouter } from 'next/navigation'
+import { CogIcon } from '@heroicons/react/24/outline'
 
 export const ProfileForm = () => {
   const { profile, updateProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const router = useRouter()
   const [formData, setFormData] = useState<Partial<UserProfile>>({
     full_name: profile?.full_name || '',
     avatar_url: profile?.avatar_url || ''
@@ -31,10 +34,29 @@ export const ProfileForm = () => {
   }
 
   return (
-    <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">个人信息</h2>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-lg font-medium text-gray-900">基本信息</h2>
+        <button
+          onClick={() => router.push('/settings')}
+          className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <CogIcon className="h-4 w-4 mr-2" />
+          更多设置
+        </button>
+      </div>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {profile?.avatar_url && (
+          <div className="flex justify-center mb-6">
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name || '用户头像'}
+              className="h-24 w-24 rounded-full"
+            />
+          </div>
+        )}
+
         <div>
           <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
             姓名
@@ -67,33 +89,28 @@ export const ProfileForm = () => {
           <div className="text-red-500 text-sm">{error}</div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-        >
-          {loading ? '保存中...' : '保存修改'}
-        </button>
-      </form>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          >
+            {loading ? '保存中...' : '保存修改'}
+          </button>
+        </div>
 
-      {profile && (
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <h3 className="text-sm font-medium text-gray-700">当前信息</h3>
-          <div className="mt-2 flex items-center space-x-4">
-            {profile.avatar_url && (
-              <img
-                src={profile.avatar_url}
-                alt={profile.full_name || '用户头像'}
-                className="h-12 w-12 rounded-full"
-              />
-            )}
-            <div>
-              <p className="text-sm font-medium text-gray-900">{profile.full_name || '未设置姓名'}</p>
-              <p className="text-sm text-gray-500">{profile.email}</p>
+        {profile && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-sm font-medium text-gray-700">账号信息</h3>
+            <div className="mt-2">
+              <p className="text-sm text-gray-500">邮箱：{profile.email}</p>
+              <p className="text-sm text-gray-500">
+                最后更新：{profile.updated_at ? new Date(profile.updated_at).toLocaleString() : '未知'}
+              </p>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </form>
     </div>
   )
 } 
