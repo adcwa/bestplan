@@ -1,17 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  reactStrictMode: true,
+  output: 'standalone',
   images: {
     unoptimized: true,
   },
   // 禁用服务器端特性
   experimental: {
-    appDir: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
-  reactStrictMode: true,
   transpilePackages: ['framer-motion'],
   webpack: (config, { isServer }) => {
     // 优化客户端打包
