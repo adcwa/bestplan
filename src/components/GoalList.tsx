@@ -95,7 +95,7 @@ const GoalCard = ({
     >
       <div className="grid grid-cols-1 md:grid-cols-10 h-full">
         {/* 左侧：目标详情 */}
-        <div className="md:col-span-4 p-8 bg-gradient-to-br from-neutral-50/50 to-white relative">
+        <div className="md:col-span-4 p-1 bg-gradient-to-br from-neutral-50/50 to-white relative">
           {/* 目标类型标签 */}
           <div className="absolute top-4 right-4">
             <span className={`
@@ -342,7 +342,7 @@ const GoalCard = ({
         </div>
 
         {/* 右侧：进展日历 */}
-        <div className="md:col-span-6 p-8 bg-white">
+        <div className="md:col-span-6 p-1 bg-white">
           <GoalCalendar 
             goal={goal} 
             onAddEvent={onAddEvent} 
