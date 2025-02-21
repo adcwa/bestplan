@@ -10,16 +10,9 @@ export default function HomePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
-      
-        <div className="max-w-7xl  px-4 sm:px-2 ">
-          <main >
-            <div className="px-4 py-6 sm:px-0">
-              <GoalTracker />
-            </div>
-          </main>
-        </div>
-      </div>
+      <main>
+      <GoalTracker />
+    </main>
     </ProtectedRoute>
   )
 } 

@@ -7,7 +7,8 @@ import type { Review, ReviewPeriod } from '../../types/review';
 export class R2Storage implements StorageService {
   private client: S3Client;
   private bucketName: string;
- 
+  private currentUser: { id: string; email: string; name: string } | null = null;
+
   constructor(accountId: string, accessKeyId: string, secretAccessKey: string, bucketName: string) {
     this.client = new S3Client({
       region: 'auto',
@@ -18,7 +19,14 @@ export class R2Storage implements StorageService {
       }
     });
     this.bucketName = bucketName;
-     
+  }
+
+  async getCurrentUser() {
+    return this.currentUser;
+  }
+
+  async setCurrentUser(user: { id: string; email: string; name: string }) {
+    this.currentUser = user;
   }
 
   private async uploadToR2(key: string, data: any): Promise<void> {
@@ -29,7 +37,6 @@ export class R2Storage implements StorageService {
       ContentType: 'application/json',
       ACL: 'public-read',
       CacheControl: 'no-cache',
-       
     });
     await this.client.send(command);
   }
@@ -60,72 +67,78 @@ export class R2Storage implements StorageService {
     await this.client.send(command);
   }
 
-  async getGoals(): Promise<Goal[]> {
-    const goals = await this.downloadFromR2('goals.json');
+  async getGoals(userId: string): Promise<Goal[]> {
+    const goals = await this.downloadFromR2(`${userId}/goals.json`);
     return goals || [];
   }
 
   async saveGoal(goal: Goal): Promise<void> {
-    const goals = await this.getGoals();
+    const user = await this.getCurrentUser();
+    if (!user) throw new Error('User not authenticated');
+    
+    const goals = await this.getGoals(user.id);
     goals.push(goal);
-    await this.uploadToR2('goals.json', goals);
+    await this.uploadToR2(`${user.id}/goals.json`, goals);
   }
 
   async updateGoal(goal: Goal): Promise<void> {
-    const goals = await this.getGoals();
+    const user = await this.getCurrentUser();
+    if (!user) throw new Error('User not authenticated');
+    
+    const goals = await this.getGoals(user.id);
     const index = goals.findIndex(g => g.id === goal.id);
     if (index !== -1) {
       goals[index] = goal;
-      await this.uploadToR2('goals.json', goals);
+      await this.uploadToR2(`${user.id}/goals.json`, goals);
     }
   }
 
-  async deleteGoal(goalId: string): Promise<void> {
-    const goals = await this.getGoals();
+  async deleteGoal(userId: string, goalId: string): Promise<void> {
+    const goals = await this.getGoals(userId);
     const filteredGoals = goals.filter(g => g.id !== goalId);
-    await this.uploadToR2('goals.json', filteredGoals);
+    await this.uploadToR2(`${userId}/goals.json`, filteredGoals);
   }
 
-  async exportData(): Promise<string> {
-    const goals = await this.getGoals();
+  async exportData(userId: string): Promise<string> {
+    const goals = await this.getGoals(userId);
     return JSON.stringify(goals, null, 2);
   }
 
-  async importData(data: string): Promise<void> {
+  async importData(userId: string, data: string): Promise<void> {
     const goals = JSON.parse(data);
-    await this.uploadToR2('goals.json', goals);
+    await this.uploadToR2(`${userId}/goals.json`, goals);
   }
 
-  async clearAll(): Promise<void> {
-    await this.uploadToR2('goals.json', []);
-    await this.uploadToR2('settings.json', null);
+  async clearAll(userId: string): Promise<void> {
+    await this.uploadToR2(`${userId}/goals.json`, []);
+    await this.uploadToR2(`${userId}/settings.json`, null);
   }
 
-  async getSettings(): Promise<AISettings> {
-    const settings = await this.downloadFromR2('settings.json');
+  async getSettings(userId: string): Promise<AISettings> {
+    const settings = await this.downloadFromR2(`${userId}/settings.json`);
     if (!settings) {
       const defaultSettings: AISettings = {
         openApiKey: '',
         baseUrl: 'https://api.deepseek.com/v1/chat/completions',
         modelName: 'deepseek-chat'
       };
-      await this.saveSettings(defaultSettings);
+      await this.saveSettings(userId, defaultSettings);
       return defaultSettings;
     }
     return settings;
   }
 
-  async saveSettings(settings: AISettings): Promise<void> {
-    await this.uploadToR2('settings.json', settings);
+  async saveSettings(userId: string, settings: AISettings): Promise<void> {
+    await this.uploadToR2(`${userId}/settings.json`, settings);
   }
 
-  async getReview(period: ReviewPeriod, year: number, month?: number, quarter?: number): Promise<Review | null> {
-    const key = `review-${period}-${year}-${month}-${quarter}.json`;
+  async getReview(userId: string, period: ReviewPeriod, year: number, month?: number, quarter?: number): Promise<Review | null> {
+    const key = `${userId}/review-${period}-${year}-${month}-${quarter}.json`;
     return await this.downloadFromR2(key);
   }
 
-  async saveReview(review: Review): Promise<void> {
-    const key = `review-${review.period}-${review.year}-${review.month}-${review.quarter}.json`;
+  async saveReview(userId: string, review: Review): Promise<void> {
+    const key = `${userId}/review-${review.period}-${review.year}-${review.month}-${review.quarter}.json`;
     await this.uploadToR2(key, review);
   }
 }
