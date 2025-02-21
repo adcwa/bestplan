@@ -3,8 +3,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import type { Goal, Event } from '@/types/goals';
 import { EventForm } from './index';
-import { motion } from 'framer-motion';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeftIcon, ChevronRightIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { format, addMonths, subMonths, isSameDay } from 'date-fns';
 import { motionConfig } from '@/utils/motion';
 import { useModal } from '@/contexts/ModalContext';
@@ -26,7 +26,9 @@ export const GoalCalendar: React.FC<Props> = ({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showEventForm, setShowEventForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
+  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<{ id: string; content: string } | null>(null);
 
   const handlePrevMonth = () => {
     setCurrentDate(subMonths(currentDate, 1));
@@ -63,17 +65,39 @@ export const GoalCalendar: React.FC<Props> = ({
   const handleDateClick = useCallback((date: Date, e: React.MouseEvent) => {
     e.stopPropagation();
     onAddEvent(goal.id, date);
-  }, [onAddEvent, goal.id]);
+  }, [goal.id, onAddEvent]);
 
   const handleEventClick = useCallback((event: Event, e: React.MouseEvent) => {
     e.stopPropagation();
-    onEditEvent(goal.id, event);
-  }, [onEditEvent, goal.id]);
+    setSelectedDate(new Date(event.date));
+    setSelectedEvent(event);
+    setShowEventForm(true);
+  }, []);
 
-  const handleDeleteEvent = (e: React.MouseEvent, eventId: string) => {
+  const handleDeleteEvent = (e: React.MouseEvent, eventId: string, content: string) => {
     e.stopPropagation();
-    onDeleteEvent(eventId);
+    setEventToDelete({ id: eventId, content });
   };
+
+  const handleConfirmDelete = () => {
+    if (eventToDelete) {
+      onDeleteEvent(eventToDelete.id);
+      setEventToDelete(null);
+    }
+  };
+
+  const handleEventSubmit = useCallback((goalId: string, eventData: Omit<Event, 'id'>) => {
+    if (selectedEvent) {
+      onEditEvent(goalId, { ...eventData, id: selectedEvent.id });
+    } else {
+      onAddEvent(goalId, new Date(eventData.date));
+    }
+    setShowEventForm(false);
+    setSelectedDate(null);
+    setSelectedEvent(undefined);
+    closeModal();
+    setActiveModalId(null);
+  }, [selectedEvent, onEditEvent, onAddEvent, closeModal, setActiveModalId]);
 
   // 使用 useMemo 缓存事件数据
   const eventsByDate = useMemo(() => {
@@ -120,7 +144,7 @@ export const GoalCalendar: React.FC<Props> = ({
       {/* 星期标题 */}
       <div className="grid grid-cols-7 gap-1 mb-1 flex-shrink-0">
         {['日', '一', '二', '三', '四', '五', '六'].map(day => (
-          <div key={day} className="text-center text-sm text-neutral-500">
+          <div key={day} className="text-center text-sm font-medium text-neutral-600">
             {day}
           </div>
         ))}
@@ -131,74 +155,76 @@ export const GoalCalendar: React.FC<Props> = ({
         {calendar.map((day, index) => {
           const events = day ? getEventsForDay(day) : [];
           const isToday = day && isSameDay(new Date(), new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
+          const isHovered = day === hoveredDay;
 
           return (
             <motion.div
               key={index}
               whileHover={{ scale: 1.02 }}
+              onHoverStart={() => setHoveredDay(day)}
+              onHoverEnd={() => setHoveredDay(null)}
               className={`
-                relative p-2 rounded-lg transition-colors
-                ${day ? 'hover:bg-primary/5 cursor-pointer' : 'bg-neutral-50/50'}
+                relative p-2 rounded-lg transition-all duration-200
+                ${day ? 'hover:bg-primary/10 cursor-pointer min-h-[80px]' : 'bg-neutral-50/50'}
                 ${isToday ? 'ring-2 ring-primary ring-offset-2' : ''}
                 ${events.length > 0 ? 'bg-primary/5' : ''}
               `}
-              onClick={(e) => handleDateClick(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), e)}
+              onClick={(e) => day && handleDateClick(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), e)}
             >
               {day && (
                 <>
-                  <span className="text-sm text-neutral-600">
-                    {day}
-                  </span>
-                  {/* 默认显示事件标题 */}
-                  {events.length > 0 && (
-                    <div className="mt-1">
-                      {events.map(event => (
-                        <div 
-                          key={event.id}
-                          className="text-xs text-neutral-600 truncate"
-                        >
-                          {event.content}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {/* Hover 时显示详细信息和操作按钮 */}
-                  {events.length > 0 && (
-                    <div 
-                      className="absolute inset-0 p-2 bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg overflow-y-auto"
-                      style={{ zIndex: 100 }}
-                    >
-                      <ul className="text-xs space-y-1">
-                        {events.map(event => (
-                          <li 
-                            key={event.id} 
-                            className="flex items-center justify-between group/event relative"
-                          >
-                            <div 
-                              className="flex-grow cursor-pointer"
-                              onClick={(e) => handleEventClick(event, e)}
-                            >
-                              <span className="line-clamp-2 text-neutral-600">
-                                {event.content}
-                              </span>
-                              {event.note && (
-                                <div className="text-xs text-gray-500 line-clamp-1">
-                                  {event.note}
-                                </div>
-                              )}
-                            </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isToday ? 'font-bold text-primary' : 'text-neutral-600'}`}>
+                      {day}
+                    </span>
+                    {isHovered && (
+                      <motion.button
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-1 rounded-full hover:bg-primary/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDateClick(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), e);
+                        }}
+                      >
+                        <PlusIcon className="w-3 h-3 text-primary" />
+                      </motion.button>
+                    )}
+                  </div>
+                  
+                  {/* 事件列表 */}
+                  <div className="mt-1 space-y-1">
+                    {events.map(event => (
+                      <motion.div
+                        key={event.id}
+                        className={`
+                          relative group rounded-md p-1 text-xs
+                          ${event.isCompleted ? 'bg-green-100' : 'bg-primary/10'}
+                          hover:bg-primary/20 transition-colors
+                        `}
+                        onClick={(e) => handleEventClick(event, e)}
+                      >
+                        <div className="flex items-start justify-between gap-1">
+                          <span className={`line-clamp-2 ${event.isCompleted ? 'text-green-800' : 'text-primary-800'}`}>
+                            {event.content}
+                          </span>
+                          <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
-                              className="text-red-500 opacity-0 group-hover/event:opacity-100 transition-opacity ml-2"
-                              onClick={(e) => handleDeleteEvent(e, event.id)}
-                              aria-label="删除事件"
+                              className="p-1 hover:bg-primary/20 rounded"
+                              onClick={(e) => handleDeleteEvent(e, event.id, event.content)}
                             >
-                              ×
+                              <TrashIcon className="w-3 h-3 text-red-500" />
                             </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                          </div>
+                        </div>
+                        {event.note && (
+                          <div className="mt-0.5 text-[10px] text-neutral-500 line-clamp-1">
+                            {event.note}
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
                 </>
               )}
             </motion.div>
@@ -206,21 +232,55 @@ export const GoalCalendar: React.FC<Props> = ({
         })}
       </div>
 
+      {/* 删除确认对话框 */}
+      <AnimatePresence>
+        {eventToDelete && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            onClick={() => setEventToDelete(null)}
+          >
+            <motion.div
+              className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                确认删除
+              </h3>
+              <p className="text-neutral-600 mb-4">
+                确定要删除事件 "{eventToDelete.content}" 吗？
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  className="px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 rounded-md transition-colors"
+                  onClick={() => setEventToDelete(null)}
+                >
+                  取消
+                </button>
+                <button
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors"
+                  onClick={handleConfirmDelete}
+                >
+                  删除
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {showEventForm && selectedDate && (
         <EventForm
           goalId={goal.id}
           initialDate={selectedDate}
           event={selectedEvent}
-          onSubmit={(event) => {
-            onEditEvent(goal.id, event);
-            setShowEventForm(false);
-            setSelectedDate(null);
-            closeModal();
-            setActiveModalId(null);
-          }}
+          onSubmit={handleEventSubmit}
           onClose={() => {
             setShowEventForm(false);
             setSelectedDate(null);
+            setSelectedEvent(undefined);
             closeModal();
             setActiveModalId(null);
           }}
