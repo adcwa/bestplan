@@ -34,6 +34,7 @@ export interface History {
 
 export interface Goal {
   id: string;
+  userId: string;
   type: GoalType;
   title: string;
   description: string;
