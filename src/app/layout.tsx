@@ -7,8 +7,41 @@ import { ModalProvider } from '@/contexts/ModalContext';
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'BestPlan - 你的最佳计划助手',
-  description: '一个帮助你规划和追踪目标的应用',
+  title: 'The Best Year of My Life',
+  description: '记录和规划你的人生目标',
+  icons: {
+    icon: [
+      {
+        url: '/icon-16x16.png',
+        sizes: '16x16',
+        type: 'image/png',
+      },
+      {
+        url: '/icon-32x32.png',
+        sizes: '32x32',
+        type: 'image/png',
+      },
+      {
+        url: '/icon-48x48.png',
+        sizes: '48x48',
+        type: 'image/png',
+      },
+      {
+        url: '/icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
+      }
+    ],
+    shortcut: ['/icon.svg'],
+    apple: [
+      {
+        url: '/apple-touch-icon.png',
+        sizes: '180x180',
+        type: 'image/png',
+      }
+    ],
+  },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({

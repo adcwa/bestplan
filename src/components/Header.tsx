@@ -5,6 +5,7 @@ import { Menu, Transition } from '@headlessui/react'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
+import Logo from '@/components/icons/Logo'
 
 interface Props {
   onOpenCommandPalette: () => void
@@ -27,8 +28,9 @@ export const Header: React.FC<Props> = ({ onOpenCommandPalette }) => {
 
       <button
         onClick={onOpenCommandPalette}
-        className="flex items-center group focus:outline-none"
+        className="flex items-center gap-2 group focus:outline-none"
       >
+        <Logo size={32} className="text-primary group-hover:opacity-80 transition-opacity" />
         <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
           The Best Year of My Life
         </h1>
