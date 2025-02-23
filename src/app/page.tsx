@@ -10,9 +10,11 @@ export default function HomePage() {
 
   return (
     <ProtectedRoute>
-      <main>
-      <GoalTracker />
-    </main>
+      <main className="flex min-h-screen flex-col items-center justify-center">
+        <div suppressHydrationWarning>
+          <h1 className="text-4xl font-bold">首页</h1>
+        </div>
+      </main>
     </ProtectedRoute>
   )
 } 

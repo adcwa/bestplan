@@ -49,6 +49,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  console.log('Layout rendering'); // 添加调试日志
+
   return (
     <html lang="zh">
       <body className={inter.className} suppressHydrationWarning={true}>

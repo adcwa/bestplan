@@ -1,42 +1,51 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
+    // 1. 基础编译选项
+    "target": "es5", // 编译后的 JavaScript 版本
+    "lib": [ // 需要包含的库文件
+      "dom", // DOM API
+      "dom.iterable", // DOM 迭代器
+      "esnext" // 最新的 ECMAScript 特性
     ],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "baseUrl": ".",
-    "paths": {
+    // 2. JavaScript 支持
+    "allowJs": true, // 允许编译 JavaScript 文件
+    "skipLibCheck": true, // 跳过声明文件的类型检查
+    // 3. 类型检查
+    "strict": true, // 启用所有严格类型检查选项
+    "forceConsistentCasingInFileNames": true, // 强制文件名大小写一致
+    // 4. 模块配置
+    "module": "esnext", // 使用 ES 模块
+    "moduleResolution": "node", // 使用 Node.js 风格的模块解析
+    "resolveJsonModule": true, // 允许导入 JSON 模块
+    "isolatedModules": true, // 确保每个文件都可以单独编译
+    // 5. React 支持
+    "jsx": "preserve", // 保留 JSX 以供 Next.js 处理
+    // 6. 构建相关
+    "noEmit": true, // 不输出编译文件
+    "incremental": true, // 启用增量编译
+    // 7. 路径配置
+    "baseUrl": ".", // 基础路径
+    "paths": { // 路径别名
       "@/*": [
         "src/*"
-      ]
+      ] // @ 指向 src 目录
     },
+    // 8. Next.js 特定配置
     "plugins": [
       {
-        "name": "next"
+        "name": "next" // Next.js TypeScript 插件
       }
-    ]
+    ],
+    "esModuleInterop": true
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
+  // 9. 文件包含/排除
+  "include": [ // 需要编译的文件
+    "next-env.d.ts", // Next.js 类型声明
+    "**/*.ts", // 所有 TypeScript 文件
+    "**/*.tsx", // 所有 TSX 文件
+    ".next/types/**/*.ts" // Next.js 生成的类型
   ],
-  "exclude": [
-    "node_modules"
+  "exclude": [ // 排除的文件
+    "node_modules" // 不编译 node_modules
   ]
 }
