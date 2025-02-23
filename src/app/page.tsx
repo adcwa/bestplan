@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { Header } from '@/components/Header'
+import { OnlineStatusBanner } from '@/components/ui/OnlineStatusBanner'
+import { CalendarDaysIcon, ChartBarIcon, ListTodoIcon, StarIcon } from 'lucide-react'
 import { GoalTracker } from '@/components'
 
 export default function HomePage() {
@@ -10,11 +12,14 @@ export default function HomePage() {
 
   return (
     <ProtectedRoute>
-      <main className="flex min-h-screen flex-col items-center justify-center">
-        <div suppressHydrationWarning>
-          <h1 className="text-4xl font-bold">首页</h1>
-        </div>
-      </main>
+      <div className="min-h-screen bg-gray-50">
+        {/* <Header onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} /> */}
+        
+        <GoalTracker/>
+         <OnlineStatusBanner />
+        
+        
+      </div>
     </ProtectedRoute>
   )
 } 

@@ -2,6 +2,7 @@
 
 import { LoginForm } from '@/components/auth/LoginForm'
 import { PublicRoute } from '@/components/auth/PublicRoute'
+import { OnlineStatusBanner } from '@/components/ui/OnlineStatusBanner'
 
 export default function LoginPage() {
   return (
@@ -19,6 +20,7 @@ export default function LoginPage() {
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <LoginForm />
         </div>
+        {/* <OnlineStatusBanner /> */}
       </div>
     </PublicRoute>
   )
